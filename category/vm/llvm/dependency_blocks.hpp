@@ -217,7 +217,7 @@ namespace monad::vm::dependency_blocks
 
     public:
         byte_offset offset;
-        int64_t block_base_gas;
+        int64_t block_gas_update;
 
         int32_t low;
         int32_t high;
@@ -237,9 +237,9 @@ namespace monad::vm::dependency_blocks
     public:
         DependencyBlock(
             Block const &blk, int64_t blk_base_gas,
-            int64_t remaining_block_base_gas)
+            int64_t blk_gas_update)
             : offset(blk.offset)
-            , block_base_gas(blk_base_gas)
+            , block_gas_update(blk_gas_update)
             , terminator(blk.terminator)
             , fallthrough_dest(blk.fallthrough_dest)
         {
@@ -248,6 +248,7 @@ namespace monad::vm::dependency_blocks
             delta = delta_;
             high = high_;
 
+        int64_t remaining_block_base_gas = blk_base_gas;
             MONAD_VM_DEBUG_ASSERT(remaining_block_base_gas >= 0);
 
             std::optional<InstrIdx> last_stmt = std::nullopt;
@@ -394,13 +395,11 @@ namespace monad::vm::dependency_blocks
     {
         DependencyBlocksIR dep_ir(ir);
         for (auto const &blk : ir.blocks()) {
-            int64_t gas = block_base_gas<traits>(blk);
-            bool is_jd = dep_ir.is_jumpdest(blk.offset);
-            int64_t blk_gas = is_jd ? 1 + gas : gas;
-            int64_t blk_gas_remaining = is_jd ? blk_gas - 1 : blk_gas;
+            int64_t blk_base_gas = block_base_gas<traits>(blk);
+            int64_t blk_gas_update = dep_ir.is_jumpdest(blk.offset) ? 1 + blk_base_gas : blk_base_gas;
 
             dep_ir.blocks.push_back(
-                DependencyBlock(blk, blk_gas, blk_gas_remaining));
+                DependencyBlock(blk, blk_base_gas, blk_gas_update));
         }
         return dep_ir;
     }

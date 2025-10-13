@@ -272,7 +272,7 @@ namespace monad::vm::llvm
                 "stacktop_offset");
         }
 
-        void check_and_update_gas(int64_t const block_base_gas)
+        void check_and_update_gas(int64_t const blk_gas_update)
         {
 
             if (check_and_update_gas_f == nullptr) {
@@ -291,11 +291,11 @@ namespace monad::vm::llvm
                 ctx_ref->setName("ctx_ref");
                 Value *gas_ref = arg[1];
                 gas_ref->setName("gas_ref");
-                Value *block_base_gas = arg[2];
-                block_base_gas->setName("block_base_gas");
+                Value *blk_gas_update = arg[2];
+                blk_gas_update->setName("blk_gas_update");
 
                 auto *gas = llvm.load(llvm.int_ty(64), gas_ref);
-                auto *gas1 = llvm.sub(gas, block_base_gas);
+                auto *gas1 = llvm.sub(gas, blk_gas_update);
                 llvm.store(gas1, gas_ref);
                 auto *gas_lt_zero = llvm.slt(gas1, llvm.i64(0));
 
@@ -313,7 +313,7 @@ namespace monad::vm::llvm
 
             llvm.call_void(
                 check_and_update_gas_f,
-                {g_ctx_ref, g_ctx_gas_ref, llvm.i64(block_base_gas)});
+                {g_ctx_ref, g_ctx_gas_ref, llvm.i64(blk_gas_update)});
         }
 
         void emit_contract()
@@ -328,7 +328,7 @@ namespace monad::vm::llvm
                 auto *lbl = get_block_lbl(blk.offset);
                 llvm.insert_at(lbl);
 
-                check_and_update_gas(blk.block_base_gas);
+                check_and_update_gas(blk.block_gas_update);
 
                 Value *stack_top = load_stack_top_p();
 
@@ -589,32 +589,6 @@ namespace monad::vm::llvm
             llvm.br(get_block_lbl(dep_ir.blocks.front().offset));
         };
 
-        bool reads_ctx_gas(OpCode op)
-        {
-            return (
-                op == Balance || op == BlobHash || op == BlockHash ||
-                op == Call || op == CallCode || op == CallDataCopy ||
-                op == CallDataLoad || op == CodeCopy || op == Create ||
-                op == Create2 || op == DelegateCall || op == Exp ||
-                op == ExtCodeCopy || op == ExtCodeHash || op == ExtCodeSize ||
-                op == Log || op == MCopy || op == MLoad || op == MStore ||
-                op == MStore8 || op == ReturnDataCopy || op == SLoad ||
-                op == SStore || op == SelfBalance || op == Sha3 ||
-                op == StaticCall || op == TLoad || op == TStore);
-        };
-
-        bool writes_ctx_gas(OpCode op)
-        {
-            return (
-                op == Balance || op == Call || op == CallCode ||
-                op == CallDataCopy || op == CodeCopy || op == Create ||
-                op == Create2 || op == DelegateCall || op == Exp ||
-                op == ExtCodeCopy || op == ExtCodeHash || op == ExtCodeSize ||
-                op == Log || op == MCopy || op == MLoad || op == MStore ||
-                op == MStore8 || op == ReturnDataCopy || op == SLoad ||
-                op == SStore || op == Sha3 || op == StaticCall);
-        };
-
         std::string to_register_name(byte_offset blkId, InstrIdx i)
         {
             return std::format("v{}_{}", blkId, i);
@@ -841,6 +815,10 @@ namespace monad::vm::llvm
 
             auto [f, arg] = llvm.internal_function_definition(
                 nm, has_ret ? llvm.word_ty : llvm.void_ty, tys);
+
+            arg[0]->setName("evm_ctx");
+            arg[1]->setName("gas");
+
             auto *entry = llvm.basic_block("entry", f);
             llvm.insert_at(entry);
 
@@ -1152,12 +1130,12 @@ namespace monad::vm::llvm
 
             Value *block_base_gas_remaining = arg[1];
             block_base_gas_remaining->setName("block_base_gas_remaining");
-            Value *gas_ref = arg[2];
-            gas_ref->setName("gas_ref");
+            Value *ctx_gas_ref = arg[2];
+            ctx_gas_ref->setName("ctx_gas_ref");
 
             auto *entry = llvm.basic_block("entry", f);
             llvm.insert_at(entry);
-            auto *gas = llvm.load(llvm.int_ty(64), gas_ref);
+            auto *gas = llvm.load(llvm.int_ty(64), ctx_gas_ref);
             auto *r = llvm.add(gas, block_base_gas_remaining);
             llvm.ret(llvm.cast_word(r));
             return f;
