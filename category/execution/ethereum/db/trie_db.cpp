@@ -109,7 +109,7 @@ std::optional<Account> TrieDb::read_account(Address const &addr)
     bytes32_t const key = to_bytes(keccak256({addr.bytes, sizeof(addr.bytes)}));
     auto const name =
         fmt::format("DB read_account addr={}, db_key={}", addr, key);
-    Stopwatch sw{name.c_str()};
+    Stopwatch<std::chrono::microseconds> sw{name.c_str()};
     auto const value =
         db_.get(concat(prefix_, STATE_NIBBLE, NibblesView{key}), block_number_);
     if (!value.has_value()) {
@@ -137,7 +137,7 @@ TrieDb::read_storage(Address const &addr, Incarnation, bytes32_t const &key)
         key,
         addr_key,
         slot_key);
-    Stopwatch sw{name.c_str()};
+    Stopwatch<std::chrono::microseconds> sw{name.c_str()};
     auto const value = db_.get(
         concat(
             prefix_,
@@ -159,7 +159,7 @@ TrieDb::read_storage(Address const &addr, Incarnation, bytes32_t const &key)
 vm::SharedIntercode TrieDb::read_code(bytes32_t const &code_hash)
 {
     auto const name = fmt::format("DB read_code code_hash={}", code_hash);
-    Stopwatch sw{name.c_str()};
+    Stopwatch<std::chrono::microseconds> sw{name.c_str()};
     // TODO read intercode object
     auto const value = db_.get(
         concat(

@@ -853,6 +853,7 @@ public:
     virtual find_cursor_result_type find_fiber_blocking(
         NodeCursor const &start, NibblesView const &key, uint64_t = 0) override
     {
+        auto const thread_id_before = gettid();
         threadsafe_boost_fibers_promise<find_cursor_result_type> promise;
         fiber_find_request_t req{
             .promise = &promise,
@@ -867,13 +868,18 @@ public:
             cond_.notify_one();
         }
         auto const res = fut.get();
-        if (aux().io->capture_io_latencies() && res.tp.num_async_reads > 0) {
+        auto const end_t = std::chrono::steady_clock::now();
+        if (aux().io->capture_io_latencies() &&
+            (end_t - res.tp.find_start_t > std::chrono::milliseconds(100))) {
             auto const &tp = res.tp;
-            auto const end_t = std::chrono::steady_clock::now();
             LOG_DEBUG(
-                "mpt::Db find key={}: success={}, num_reads={}, dequeue={}, "
+                "mpt::Db find key={}: thread_id before={}, after={}, "
+                "success={}, "
+                "num_reads={}, dequeue={}, "
                 "find={}, notify_fiber={}, total={}",
                 to_hex(req.key),
+                thread_id_before,
+                gettid(),
                 res.result == find_result::success,
                 tp.num_async_reads,
                 tp.find_start_t - tp.enqueue_t,
