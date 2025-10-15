@@ -16,6 +16,7 @@
 #include <category/core/assert.h>
 #include <category/core/int.hpp>
 #include <category/core/likely.h>
+#include <category/core/util/stopwatch.hpp>
 #include <category/execution/ethereum/block_hash_buffer.hpp>
 #include <category/execution/ethereum/chain/chain.hpp>
 #include <category/execution/ethereum/core/block.hpp>
@@ -41,6 +42,7 @@
 #include <intx/intx.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <memory>
 #include <utility>
@@ -415,6 +417,9 @@ Result<Receipt> ExecuteTransaction<traits>::operator()()
     {
         TRACE_TXN_EVENT(StartExecution);
 
+        auto const name = std::format("first time exec tx {}", i_);
+        Stopwatch<std::chrono::microseconds> sw(name.c_str());
+
         State state{block_state_, Incarnation{header_.number, i_ + 1}};
         state.set_original_nonce(sender_, tx_.nonce);
 
@@ -445,6 +450,8 @@ Result<Receipt> ExecuteTransaction<traits>::operator()()
 
         call_tracer_.reset();
 
+        auto const name = std::format("retry tx {} ignore merge", i_);
+        Stopwatch<std::chrono::microseconds> sw{name.c_str()};
         auto result = execute_impl2(state);
 
         MONAD_ASSERT(block_state_.can_merge(state));
@@ -453,6 +460,9 @@ Result<Receipt> ExecuteTransaction<traits>::operator()()
         }
         auto const receipt = execute_final(state, result.value());
         call_tracer_.on_finish(receipt.gas_used);
+        sw.stop();
+        auto const merge_name = std::format("retry merge tx {}", i_);
+        Stopwatch<std::chrono::microseconds> merge_sw(merge_name.c_str());
         block_state_.merge(state);
         return receipt;
     }

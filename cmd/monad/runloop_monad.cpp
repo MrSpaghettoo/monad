@@ -284,7 +284,7 @@ Result<BlockExecOutput> propose_block(
     record_block_marker_event(MONAD_EXEC_BLOCK_PERF_EVM_EXIT);
 
     // Database commit of state changes (incl. Merkle root calculations)
-    block_state.log_debug();
+    // block_state.log_debug();
     auto const commit_begin = std::chrono::steady_clock::now();
     block_state.commit(
         block_id,
@@ -659,6 +659,7 @@ Result<std::pair<uint64_t, uint64_t>> runloop_monad(
                 ntxns,
                 exec_output.eth_header.gas_used,
                 block_time_start);
+            // MONAD_ABORT("kill it");
 
             return outcome::success();
         };
