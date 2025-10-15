@@ -789,6 +789,7 @@ static bool try_run(arguments const &args, Run const &run)
         return true;
     }
     catch (FuzzerAssertFailure const &ex) {
+        std::cerr << ex.what() << '\n';
         return false;
     }
 }
