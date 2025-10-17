@@ -367,6 +367,7 @@ static arguments parse_args(int const argc, char **const argv)
         std::map<std::string, BlockchainTestVM::Implementation>{
             {"interpreter", BlockchainTestVM::Implementation::Interpreter},
             {"compiler", BlockchainTestVM::Implementation::Compiler},
+            {"llvm", BlockchainTestVM::Implementation::LLVM},
         };
 
     app.add_option(
@@ -557,6 +558,10 @@ static evmc::VM create_monad_vm(
         };
 
         hook = compiler_emit_hook(engine, &hook_engine);
+    }
+
+    if (args.implementation == LLVM) {
+        init_llvm();
     }
 
     return evmc::VM(
