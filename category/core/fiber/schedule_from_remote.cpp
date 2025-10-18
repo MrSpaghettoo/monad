@@ -38,13 +38,13 @@ namespace boost
         {
             // LOG_INFO("JAMES2");
 
-            BOOST_ASSERT(nullptr != ctx);
+            MONAD_ASSERT(nullptr != ctx);
             // another thread might signal the main-context of this thread
-            BOOST_ASSERT(!ctx->is_context(type::dispatcher_context));
-            BOOST_ASSERT(this == ctx->get_scheduler());
-            BOOST_ASSERT(!ctx->ready_is_linked());
-            BOOST_ASSERT(!ctx->remote_ready_is_linked());
-            BOOST_ASSERT(!ctx->terminated_is_linked());
+            MONAD_ASSERT(!ctx->is_context(type::dispatcher_context));
+            MONAD_ASSERT(this == ctx->get_scheduler());
+            MONAD_ASSERT(!ctx->ready_is_linked());
+            MONAD_ASSERT(!ctx->remote_ready_is_linked());
+            MONAD_ASSERT(!ctx->terminated_is_linked());
             // boost::fibers::algo::algorithm* const algo = algo_.get();
             if (auto *const algo2 =
                     dynamic_cast<monad::fiber::PriorityAlgorithm *>(
@@ -55,9 +55,9 @@ namespace boost
             else {
                 // protect for concurrent access
                 detail::spinlock_lock lk{remote_ready_splk_};
-                BOOST_ASSERT(!shutdown_);
-                BOOST_ASSERT(nullptr != main_ctx_);
-                BOOST_ASSERT(nullptr != dispatcher_ctx_.get());
+                MONAD_ASSERT(!shutdown_);
+                MONAD_ASSERT(nullptr != main_ctx_);
+                MONAD_ASSERT(nullptr != dispatcher_ctx_.get());
                 // push new context to remote ready-queue
                 ctx->remote_ready_link(remote_ready_queue_);
                 lk.unlock();
