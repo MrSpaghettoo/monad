@@ -197,19 +197,10 @@ private:
             if (block_id == finalized_block_id_) {
                 break;
             }
-            MONAD_ASSERT_PRINTF(
-                block_number > finalized_block_,
-                "block_number %lu is not greater than last finalized block "
-                "%lu. block_id = %s, block_ %lu, block_id_ %s, "
-                "finalized_block_id_ = %s, depth = %d",
-                block_number,
-                finalized_block_,
-                evmc::hex(to_byte_string_view(block_id.bytes)).c_str(),
-                block_,
-                evmc::hex(to_byte_string_view(block_id_.bytes)).c_str(),
-                evmc::hex(to_byte_string_view(finalized_block_id_.bytes))
-                    .c_str(),
-                depth);
+            if (block_number <= finalized_block_) {
+                truncated = true;
+                break;
+            }
             auto const it =
                 proposal_map_.find(std::make_pair(block_number, block_id));
             if (it == proposal_map_.end()) {
