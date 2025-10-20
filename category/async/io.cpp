@@ -94,7 +94,7 @@ namespace detail
         explicit within_completions_holder(AsyncIO_per_thread_state_t *parent_)
             : parent(parent_)
         {
-            MONAD_DEBUG_ASSERT(parent->within_completions_count < 20);
+            MONAD_ASSERT(parent->within_completions_count < 20);
             parent->within_completions_count++;
         }
 

@@ -389,6 +389,7 @@ namespace
 
         async_test.release_ios();
         async_test.unpause();
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         aio.wait_until_done();
         EXPECT_EQ(completions, num_ios);
     }
