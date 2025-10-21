@@ -38,6 +38,7 @@
 #include <category/vm/vm.hpp>
 
 #include <quill/Quill.h>
+#include <quill/bundled/fmt/format.h>
 
 #include <evmc/evmc.h>
 
@@ -657,6 +658,22 @@ void State::log_debug()
     LOG_DEBUG("  Original accounts: {}", original_.size());
     LOG_DEBUG("  Current accounts: {}", current_.size());
     LOG_DEBUG("  Code entries: {}", code_.size());
+    
+    if (!code_.empty()) {
+        LOG_DEBUG("  Code changes: {}", code_.size());
+        for (auto const &[code_hash, code_value] : code_) {
+            auto const intercode = code_value->intercode();
+            auto const code_size = intercode->size();
+            LOG_DEBUG("    Code hash: {} (size: {})", code_hash, code_size);
+            auto const code_data = intercode->code();
+            auto const log_size = std::min(code_size, size_t(64));
+            if (log_size > 0) {
+                LOG_DEBUG("      Code content: {}", 
+                         fmt::format("0x{:02x}", 
+                                   fmt::join(code_data, code_data + log_size, "")));
+            }
+        }
+    }
     
     for (auto const &[address, stack] : current_) {
         if (stack.size() == 1 && stack.version() == 0) {
