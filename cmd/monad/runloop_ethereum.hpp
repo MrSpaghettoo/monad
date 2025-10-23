@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "revert_transaction_generator.hpp"
+
 #include <category/core/bytes.hpp>
 #include <category/core/config.hpp>
 #include <category/core/result.hpp>
@@ -47,7 +49,15 @@ Result<BlockHeader> process_ethereum_block(
     BlockHashBuffer const &block_hash_buffer,
     fiber::PriorityPool &priority_pool, Block const &block,
     bytes32_t const &block_id, bytes32_t const &parent_block_id,
-    bool const enable_tracing);
+    bool const enable_tracing,
+    RevertTransactionGeneratorFn const & =
+        [](std::vector<Address> const &,
+           std::vector<std::vector<std::optional<Address>>> const &)
+            -> Result<RevertTransactionFn> {
+        return [](Address const &, Transaction const &, uint64_t, State &) {
+            return false;
+        };
+    });
 
 Result<std::pair<uint64_t, uint64_t>> runloop_ethereum(
     Chain const &, std::filesystem::path const &, Db &, vm::VM &,

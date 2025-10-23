@@ -91,7 +91,8 @@ Result<BlockHeader> process_ethereum_block(
     BlockHashBuffer const &block_hash_buffer,
     fiber::PriorityPool &priority_pool, Block const &block,
     bytes32_t const &block_id, bytes32_t const &parent_block_id,
-    bool const enable_tracing)
+    bool const enable_tracing,
+    RevertTransactionGeneratorFn const &make_revert_transaction)
 {
     [[maybe_unused]] auto const block_start = std::chrono::system_clock::now();
     auto const block_begin = std::chrono::steady_clock::now();
@@ -141,6 +142,9 @@ Result<BlockHeader> process_ethereum_block(
     db.set_block_and_prefix(block.header.number - 1, parent_block_id);
     BlockMetrics block_metrics;
     BlockState block_state(db, vm);
+    BOOST_OUTCOME_TRY(
+        RevertTransactionFn const revert_transaction,
+        make_revert_transaction(senders, recovered_authorities));
     record_block_marker_event(MONAD_EXEC_BLOCK_PERF_EVM_ENTER);
     BOOST_OUTCOME_TRY(
         auto const receipts,
@@ -154,7 +158,8 @@ Result<BlockHeader> process_ethereum_block(
             priority_pool,
             block_metrics,
             call_tracers,
-            state_tracers));
+            state_tracers,
+            revert_transaction));
     record_block_marker_event(MONAD_EXEC_BLOCK_PERF_EVM_EXIT);
 
     // Database commit of state changes (incl. Merkle root calculations)
