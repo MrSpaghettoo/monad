@@ -43,7 +43,8 @@ namespace fiber
 
 template <Traits traits>
 Result<BlockHeader> process_ethereum_block(
-    Chain const &chain, Db &db, vm::VM &vm, BlockHashBuffer &block_hash_buffer,
+    Chain const &chain, Db &db, vm::VM &vm,
+    BlockHashBuffer const &block_hash_buffer,
     fiber::PriorityPool &priority_pool, Block const &block,
     bytes32_t const &block_id, bytes32_t const &parent_block_id,
     bool const enable_tracing);
