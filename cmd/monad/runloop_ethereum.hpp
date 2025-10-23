@@ -15,8 +15,10 @@
 
 #pragma once
 
+#include <category/core/bytes.hpp>
 #include <category/core/config.hpp>
 #include <category/core/result.hpp>
+#include <category/vm/evm/traits.hpp>
 #include <category/vm/vm.hpp>
 
 #include <cstdint>
@@ -27,6 +29,9 @@
 
 MONAD_NAMESPACE_BEGIN
 
+struct Block;
+struct BlockHeader;
+class BlockHashBuffer;
 struct Chain;
 struct Db;
 class BlockHashBufferFinalized;
@@ -35,6 +40,13 @@ namespace fiber
 {
     class PriorityPool;
 }
+
+template <Traits traits>
+Result<BlockHeader> process_ethereum_block(
+    Chain const &chain, Db &db, vm::VM &vm, BlockHashBuffer &block_hash_buffer,
+    fiber::PriorityPool &priority_pool, Block const &block,
+    bytes32_t const &block_id, bytes32_t const &parent_block_id,
+    bool const enable_tracing);
 
 Result<std::pair<uint64_t, uint64_t>> runloop_ethereum(
     Chain const &, std::filesystem::path const &, Db &, vm::VM &,

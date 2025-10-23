@@ -36,6 +36,7 @@
 #include <category/execution/ethereum/trace/call_tracer.hpp>
 #include <category/execution/ethereum/validate_block.hpp>
 #include <category/execution/ethereum/validate_transaction.hpp>
+#include <category/vm/evm/explicit_traits.hpp>
 #include <category/vm/evm/switch_traits.hpp>
 #include <category/vm/evm/traits.hpp>
 
@@ -78,6 +79,10 @@ void log_tps(
 };
 
 #pragma GCC diagnostic pop
+
+MONAD_ANONYMOUS_NAMESPACE_END
+
+MONAD_NAMESPACE_BEGIN
 
 // Process a single historical Ethereum block
 template <Traits traits>
@@ -208,9 +213,7 @@ Result<BlockHeader> process_ethereum_block(
     return output_header;
 }
 
-MONAD_ANONYMOUS_NAMESPACE_END
-
-MONAD_NAMESPACE_BEGIN
+EXPLICIT_TRAITS(process_ethereum_block);
 
 Result<std::pair<uint64_t, uint64_t>> runloop_ethereum(
     Chain const &chain, std::filesystem::path const &ledger_dir, Db &db,
