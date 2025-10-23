@@ -36,6 +36,8 @@
 #include <category/execution/ethereum/trace/call_tracer.hpp>
 #include <category/execution/ethereum/validate_block.hpp>
 #include <category/execution/ethereum/validate_transaction.hpp>
+#include <category/execution/monad/chain/monad_chain.hpp>
+#include <category/execution/monad/validate_monad_block.hpp>
 #include <category/vm/evm/explicit_traits.hpp>
 #include <category/vm/evm/switch_traits.hpp>
 #include <category/vm/evm/traits.hpp>
@@ -91,8 +93,7 @@ Result<BlockHeader> process_ethereum_block(
     BlockHashBuffer const &block_hash_buffer,
     fiber::PriorityPool &priority_pool, Block const &block,
     bytes32_t const &block_id, bytes32_t const &parent_block_id,
-    bool const enable_tracing,
-    RevertTransactionGeneratorFn const &make_revert_transaction)
+    bool const enable_tracing, BlockCache *const block_cache)
 {
     [[maybe_unused]] auto const block_start = std::chrono::system_clock::now();
     auto const block_begin = std::chrono::steady_clock::now();
@@ -142,9 +143,88 @@ Result<BlockHeader> process_ethereum_block(
     db.set_block_and_prefix(block.header.number - 1, parent_block_id);
     BlockMetrics block_metrics;
     BlockState block_state(db, vm);
-    BOOST_OUTCOME_TRY(
-        RevertTransactionFn const revert_transaction,
-        make_revert_transaction(senders, recovered_authorities));
+
+    // Build the revert transaction function
+    RevertTransactionFn revert_transaction =
+        [](Address const &, Transaction const &, uint64_t, State &) {
+            return false;
+        };
+    if constexpr (is_monad_trait_v<traits>) {
+        // Monad-specific revert transaction logic
+        BOOST_OUTCOME_TRY(static_validate_monad_senders<traits>(senders));
+
+        // Update the BlockCache with this block's senders and authorities
+        MONAD_ASSERT(block_cache, "block_cache required for Monad traits");
+        auto [entry, success] = block_cache->emplace(
+            block_id,
+            BlockCacheEntry{
+                .block_number = block.header.number,
+                .parent_id = parent_block_id,
+                .senders_and_authorities = {}});
+        MONAD_ASSERT(success, "should never be processing duplicate block");
+        for (Address const &sender : senders) {
+            entry->second.senders_and_authorities.insert(sender);
+        }
+        for (std::vector<std::optional<Address>> const &authorities :
+             recovered_authorities) {
+            for (std::optional<Address> const &authority : authorities) {
+                if (authority.has_value()) {
+                    entry->second.senders_and_authorities.insert(
+                        authority.value());
+                }
+            }
+        }
+
+        // Make the chain context, providing the parent and grandparent
+        MonadChainContext chain_context{
+            .grandparent_senders_and_authorities = nullptr,
+            .parent_senders_and_authorities = nullptr,
+            .senders_and_authorities =
+                block_cache->at(block_id).senders_and_authorities,
+            .senders = senders,
+            .authorities = recovered_authorities};
+
+        if (block.header.number > 1) {
+            MONAD_ASSERT(
+                block_cache->contains(parent_block_id),
+                "block cache must contain parent");
+            BlockCacheEntry const &parent_entry =
+                block_cache->at(parent_block_id);
+            chain_context.parent_senders_and_authorities =
+                &parent_entry.senders_and_authorities;
+            if (block.header.number > 2) {
+                bytes32_t const &grandparent_id = parent_entry.parent_id;
+                MONAD_ASSERT(
+                    block_cache->contains(grandparent_id),
+                    "block cache must contain grandparent");
+                BlockCacheEntry const &grandparent_entry =
+                    block_cache->at(grandparent_id);
+                chain_context.grandparent_senders_and_authorities =
+                    &grandparent_entry.senders_and_authorities;
+            }
+        }
+
+        // Capture chain reference for the revert transaction function
+        MonadChain const *const monad_chain =
+            dynamic_cast<MonadChain const *>(&chain);
+        MONAD_ASSERT(monad_chain, "chain must be a MonadChain");
+        revert_transaction = [monad_chain, &block, chain_context](
+                                 Address const &sender,
+                                 Transaction const &tx,
+                                 uint64_t const i,
+                                 State &state) {
+            return monad_chain->revert_transaction(
+                block.header.number,
+                block.header.timestamp,
+                sender,
+                tx,
+                block.header.base_fee_per_gas.value_or(0),
+                i,
+                state,
+                chain_context);
+        };
+    }
+
     record_block_marker_event(MONAD_EXEC_BLOCK_PERF_EVM_ENTER);
     BOOST_OUTCOME_TRY(
         auto const receipts,

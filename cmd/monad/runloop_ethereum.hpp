@@ -15,13 +15,14 @@
 
 #pragma once
 
-#include "revert_transaction_generator.hpp"
-
 #include <category/core/bytes.hpp>
 #include <category/core/config.hpp>
 #include <category/core/result.hpp>
+#include <category/execution/ethereum/core/address.hpp>
 #include <category/vm/evm/traits.hpp>
 #include <category/vm/vm.hpp>
+
+#include <ankerl/unordered_dense.h>
 
 #include <cstdint>
 #include <filesystem>
@@ -43,21 +44,23 @@ namespace fiber
     class PriorityPool;
 }
 
+struct BlockCacheEntry
+{
+    uint64_t block_number;
+    bytes32_t parent_id;
+    ankerl::unordered_dense::segmented_set<Address> senders_and_authorities;
+};
+
+using BlockCache =
+    ankerl::unordered_dense::segmented_map<bytes32_t, BlockCacheEntry>;
+
 template <Traits traits>
 Result<BlockHeader> process_ethereum_block(
     Chain const &chain, Db &db, vm::VM &vm,
     BlockHashBuffer const &block_hash_buffer,
     fiber::PriorityPool &priority_pool, Block const &block,
     bytes32_t const &block_id, bytes32_t const &parent_block_id,
-    bool const enable_tracing,
-    RevertTransactionGeneratorFn const & =
-        [](std::vector<Address> const &,
-           std::vector<std::vector<std::optional<Address>>> const &)
-            -> Result<RevertTransactionFn> {
-        return [](Address const &, Transaction const &, uint64_t, State &) {
-            return false;
-        };
-    });
+    bool const enable_tracing, BlockCache * = nullptr);
 
 Result<std::pair<uint64_t, uint64_t>> runloop_ethereum(
     Chain const &, std::filesystem::path const &, Db &, vm::VM &,

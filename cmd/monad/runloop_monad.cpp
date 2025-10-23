@@ -15,7 +15,6 @@
 
 #include "runloop_monad.hpp"
 #include "file_io.hpp"
-#include "revert_transaction_generator.hpp"
 #include "runloop_ethereum.hpp"
 
 #include <category/core/assert.h>
@@ -150,12 +149,6 @@ Result<BlockExecOutput> propose_block(
     BlockHashBuffer const &block_hash_buffer =
         block_hash_chain.find_chain(consensus_header.parent_id());
 
-    // make a generator which is able to return the revert function based on
-    // purely ethereum concepts
-    RevertTransactionGeneratorFn const make_revert_transaction =
-        revert_transaction_generator<traits>(
-            block_id, consensus_header.parent_id(), block, chain, block_cache);
-
     // Block input validation
     BOOST_OUTCOME_TRY(static_validate_consensus_header(consensus_header));
 
@@ -173,7 +166,7 @@ Result<BlockExecOutput> propose_block(
             block_id,
             is_first_block ? bytes32_t{} : consensus_header.parent_id(),
             enable_tracing,
-            make_revert_transaction));
+            &block_cache));
 
     // Commit prologue: computation of the Ethereum block hash to append to
     // the circular hash buffer
