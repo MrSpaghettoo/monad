@@ -32,7 +32,7 @@ MONAD_NAMESPACE_BEGIN
 
 class BlockHashBuffer;
 class BlockMetrics;
-struct BlockHeader;
+struct ExecutionInputs;
 class BlockState;
 struct CallTracerBase;
 struct Chain;
@@ -57,14 +57,14 @@ protected:
     Transaction const &tx_;
     Address const &sender_;
     std::vector<std::optional<Address>> const &authorities_;
-    BlockHeader const &header_;
+    ExecutionInputs const &execution_inputs_;
     uint64_t i_;
     RevertTransactionFn revert_transaction_;
 
 public:
     ExecuteTransactionNoValidation(
         Chain const &, Transaction const &, Address const &,
-        std::vector<std::optional<Address>> const &, BlockHeader const &,
+        std::vector<std::optional<Address>> const &, ExecutionInputs const &,
         uint64_t i,
         RevertTransactionFn const & = [](Address const &, Transaction const &,
                                          uint64_t, State &) { return false; });
@@ -79,7 +79,7 @@ class ExecuteTransaction : public ExecuteTransactionNoValidation<traits>
     using ExecuteTransactionNoValidation<traits>::tx_;
     using ExecuteTransactionNoValidation<traits>::sender_;
     using ExecuteTransactionNoValidation<traits>::authorities_;
-    using ExecuteTransactionNoValidation<traits>::header_;
+    using ExecuteTransactionNoValidation<traits>::execution_inputs_;
     using ExecuteTransactionNoValidation<traits>::i_;
     using ExecuteTransactionNoValidation<traits>::revert_transaction_;
 
@@ -96,7 +96,7 @@ class ExecuteTransaction : public ExecuteTransactionNoValidation<traits>
 public:
     ExecuteTransaction(
         Chain const &, uint64_t i, Transaction const &, Address const &,
-        std::vector<std::optional<Address>> const &, BlockHeader const &,
+        std::vector<std::optional<Address>> const &, ExecutionInputs const &,
         BlockHashBuffer const &, BlockState &, BlockMetrics &,
         boost::fibers::promise<void> &prev, CallTracerBase &,
         trace::StateTracer &,
