@@ -306,14 +306,16 @@ namespace
                         std::make_unique<trace::StateTracer>(std::monostate{}));
                 }
             }
-
-            BOOST_OUTCOME_TRY(
-                auto result,
+            MONAD_ASSERT(
+                transaction_index < static_cast<uint64_t>(transactions.size()));
+            std::span<Transaction const> transactions_view{
+                transactions.data(), transaction_index + 1};
+            BOOST_OUTCOME_TRYV2(
+                auto &&,
                 execute_block_transactions<traits>(
                     chain,
                     header,
-                    transactions, // TODO(dhil): we need to play only up to and
-                                  // including `transaction_index`.
+                    transactions_view,
                     senders,
                     authorities,
                     block_state,
@@ -341,12 +343,14 @@ namespace
                             trace::StateDiffTracer{traces[i]["result"]}));
                 }
             }
-            BOOST_OUTCOME_TRY(
-                auto result,
+            std::span<Transaction const> transactions_view{
+                transactions.data(), transactions.size()};
+            BOOST_OUTCOME_TRYV2(
+                auto &&,
                 execute_block_transactions<traits>(
                     chain,
                     header,
-                    transactions,
+                    transactions_view,
                     senders,
                     authorities,
                     block_state,
