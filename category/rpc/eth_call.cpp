@@ -1043,7 +1043,7 @@ struct monad_eth_call_executor
         // be guaranteed to complete as there is no notion of state override
         // here. However, the question remains: should we use the low or high
         // gas pool, or some separate pool here? The executor
-        low_gas_pool_.pool.submit(
+        high_gas_pool_.pool.submit(
             priority,
             [this,
              block_id = block_id,
