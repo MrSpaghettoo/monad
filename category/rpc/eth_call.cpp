@@ -255,6 +255,22 @@ namespace
         MONAD_ASSERT(transactions.size() == senders.size());
         MONAD_ASSERT(transactions.size() == authorities.size());
 
+        size_t const span_size = [&]() {
+            if (trace_transaction) {
+                MONAD_ASSERT(
+                    transaction_index <
+                    static_cast<uint64_t>(transactions.size()));
+                return transaction_index + 1;
+            }
+            return transactions.size();
+        }();
+
+        std::span<Transaction const> transactions_view{
+            transactions.data(), span_size};
+        std::span<Address const> senders_view{senders.data(), span_size};
+        std::span<std::vector<std::optional<Address>> const> authorities_view{
+            authorities.data(), span_size};
+
         // Execute block header
         execute_block_header<traits>(chain, block_state, header);
         BlockMetrics metrics{};
@@ -262,7 +278,7 @@ namespace
         // Prepare state tracers and auxiliary noop call tracers.
         using json = nlohmann::json;
         std::vector<std::unique_ptr<trace::StateTracer>> state_tracers{};
-        state_tracers.reserve(transactions.size());
+        state_tracers.reserve(span_size);
 
         // Helper to create a trace log entry of the form:
         //   {"result": { execution trace goes here }, "txHash": "0x..."}
@@ -277,61 +293,57 @@ namespace
         };
 
         std::vector<std::unique_ptr<CallTracerBase>> noop_call_tracers{};
-        noop_call_tracers.reserve(transactions.size());
+        noop_call_tracers.reserve(span_size);
 
-        for (size_t i = 0; i < transactions.size(); ++i) {
+        for (size_t i = 0; i < span_size; ++i) {
             noop_call_tracers.emplace_back(std::unique_ptr<NoopCallTracer>{
                 std::make_unique<NoopCallTracer>()});
         }
+        std::span<std::unique_ptr<CallTracerBase>> noop_call_tracers_view{
+            noop_call_tracers.data(), span_size};
 
         // Trace single transaction
         if (trace_transaction) {
             // We allocate just one trace entry here as we only need to return
-            // the trace result of `transaction[transaction_index]`.
-            json trace = trace_entry(transaction_index);
-            for (size_t i = 0; i < transactions.size(); ++i) {
-                if (i == transaction_index) {
-                    if (tracer_config == PRESTATE_TRACER) {
-                        state_tracers.emplace_back(
-                            std::make_unique<trace::StateTracer>(
-                                trace::PrestateTracer{trace["result"]}));
-                    }
-                    else {
-                        state_tracers.emplace_back(
-                            std::make_unique<trace::StateTracer>(
-                                trace::StateDiffTracer{trace["result"]}));
-                    }
-                }
-                else {
-                    state_tracers.emplace_back(
-                        std::make_unique<trace::StateTracer>(std::monostate{}));
-                }
+            // the trace result of `transactions[transaction_index]`.
+
+            for (size_t i = 0; i < span_size - 1; ++i) {
+                state_tracers.emplace_back(
+                    std::make_unique<trace::StateTracer>(std::monostate{}));
             }
-            MONAD_ASSERT(
-                transaction_index < static_cast<uint64_t>(transactions.size()));
-            std::span<Transaction const> transactions_view{
-                transactions.data(), transaction_index + 1};
+
+            json trace = trace_entry(transaction_index);
+            state_tracers.emplace_back(
+                tracer_config == PRESTATE_TRACER
+                    ? std::make_unique<trace::StateTracer>(
+                          trace::PrestateTracer{trace["result"]})
+                    : std::make_unique<trace::StateTracer>(
+                          trace::StateDiffTracer{trace["result"]}));
+
+            std::span<std::unique_ptr<trace::StateTracer>> state_tracers_view{
+                state_tracers.data(), span_size};
+
             BOOST_OUTCOME_TRYV2(
                 auto &&,
                 execute_block_transactions<traits>(
                     chain,
                     header,
                     transactions_view,
-                    senders,
-                    authorities,
+                    senders_view,
+                    authorities_view,
                     block_state,
                     buffer,
                     pool,
                     metrics,
-                    noop_call_tracers,
-                    state_tracers));
+                    noop_call_tracers_view,
+                    state_tracers_view));
             return Result<nlohmann::json>{std::move(trace)};
         }
         else {
             // Trace an entire block
             std::vector<json> traces{};
-            traces.reserve(transactions.size());
-            for (size_t i = 0; i < transactions.size(); ++i) {
+            traces.reserve(span_size);
+            for (size_t i = 0; i < span_size; ++i) {
                 traces.emplace_back(trace_entry(i));
                 if (tracer_config == PRESTATE_TRACER) {
                     state_tracers.emplace_back(
@@ -344,22 +356,24 @@ namespace
                             trace::StateDiffTracer{traces[i]["result"]}));
                 }
             }
-            std::span<Transaction const> transactions_view{
-                transactions.data(), transactions.size()};
+
+            std::span<std::unique_ptr<trace::StateTracer>> state_tracers_view{
+                state_tracers.data(), span_size};
+
             BOOST_OUTCOME_TRYV2(
                 auto &&,
                 execute_block_transactions<traits>(
                     chain,
                     header,
                     transactions_view,
-                    senders,
-                    authorities,
+                    senders_view,
+                    authorities_view,
                     block_state,
                     buffer,
                     pool,
                     metrics,
-                    noop_call_tracers,
-                    state_tracers));
+                    noop_call_tracers_view,
+                    state_tracers_view));
 
             // Compose state traces
             return Result<json>{std::move(traces)};
