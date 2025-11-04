@@ -29,7 +29,6 @@
 #include <category/vm/runtime/types.hpp>
 
 #include <evmc/evmc.h>
-
 #include <llvm-c/Target.h>
 
 #include <cstdint>
