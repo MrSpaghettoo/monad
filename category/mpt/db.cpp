@@ -106,6 +106,8 @@ AsyncIOContext::AsyncIOContext(ReadOnlyOnDiskDbConfig const &options)
         pool_options.open_read_only = true;
         pool_options.disable_mismatching_storage_pool_check =
             options.disable_mismatching_storage_pool_check;
+        pool_options.uncached_read =
+            options.uncached_read; // only possible for read_only db
         MONAD_ASSERT(!options.dbname_paths.empty());
         return async::storage_pool{
             options.dbname_paths,

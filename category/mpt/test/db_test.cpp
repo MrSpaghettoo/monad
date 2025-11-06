@@ -2049,6 +2049,31 @@ TEST_F(OnDiskDbWithFileFixture, copy_trie_to_different_version_modify_state)
     }
 }
 
+TEST_F(OnDiskDbWithFileFixture, uncached_read_only_db_works)
+{
+
+    auto const &kv = fixed_updates::kv;
+
+    auto const prefix = 0x00_bytes;
+    uint64_t block_id = 0x123;
+
+    this->root = upsert_updates_flat_list(
+        std::move(this->root),
+        this->db,
+        prefix,
+        block_id,
+        make_update(kv[0].first, kv[0].second),
+        make_update(kv[1].first, kv[1].second));
+
+    AsyncIOContext io_ctx{ReadOnlyOnDiskDbConfig{
+        .uncached_read = true, .dbname_paths = {dbname}}};
+    Db ro_db{io_ctx};
+
+    auto res = ro_db.find(prefix + kv[0].first, block_id);
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(res.value().node->value(), kv[0].second);
+}
+
 TEST_F(OnDiskDbWithFileFixture, history_ring_buffer_wrap_around)
 {
     auto const prefix = 0x0012_bytes;

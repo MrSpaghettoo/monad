@@ -61,7 +61,7 @@ std::filesystem::path storage_pool::device_t::current_path() const
     char *const out = ret.data();
     // Linux keeps a symlink at /proc/self/fd/n
     char in[64];
-    snprintf(in, sizeof(in), "/proc/self/fd/%d", readwritefd_);
+    snprintf(in, sizeof(in), "/proc/self/fd/%d", cached_readwritefd_);
     ssize_t const len = ::readlink(in, out, 32768);
     MONAD_ASSERT_PRINTF(
         len != -1, "readlink failed due to %s", std::strerror(errno));
@@ -87,7 +87,7 @@ std::pair<file_offset_t, file_offset_t> storage_pool::device_t::capacity() const
     case device_t::type_t_::file: {
         struct stat stat;
         MONAD_ASSERT_PRINTF(
-            -1 != ::fstat(readwritefd_, &stat),
+            -1 != ::fstat(cached_readwritefd_, &stat),
             "failed due to %s",
             std::strerror(errno));
         return {
@@ -102,7 +102,7 @@ std::pair<file_offset_t, file_offset_t> storage_pool::device_t::capacity() const
         used += metadata_->chunk_capacity;
         MONAD_ASSERT_PRINTF(
             !ioctl(
-                readwritefd_,
+                cached_readwritefd_,
                 _IOR(0x12, 114, size_t) /*BLKGETSIZE64*/,
                 &capacity),
             "failed due to %s",
@@ -492,8 +492,19 @@ storage_pool::device_t storage_pool::make_device_(
     if (auto const **const dev = std::get_if<1>(&dev_no_or_dev)) {
         unique_hash = (*dev)->unique_hash_;
     }
+    int uncached_readfd = -1;
+    if (flags.uncached_read) {
+        MONAD_ASSERT(flags.open_read_only);
+        // For direct read, we need a separate fd with O_DIRECT
+        uncached_readfd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC | O_DIRECT);
+        MONAD_ASSERT_PRINTF(
+            uncached_readfd != -1,
+            "open failed due to %s",
+            std::strerror(errno));
+    }
     return device_t(
         readwritefd,
+        uncached_readfd,
         type,
         unique_hash,
         static_cast<size_t>(stat.st_size),
@@ -651,7 +662,8 @@ storage_pool::storage_pool(storage_pool const *src, clone_as_read_only_tag_)
                     return ::open(path.c_str(), O_PATH | O_CLOEXEC);
                 }
                 char path[PATH_MAX];
-                sprintf(path, "/proc/self/fd/%d", src_device.readwritefd_);
+                sprintf(
+                    path, "/proc/self/fd/%d", src_device.cached_readwritefd_);
                 return ::open(path, O_RDONLY | O_CLOEXEC);
             }();
             MONAD_ASSERT_PRINTF(
@@ -797,9 +809,12 @@ storage_pool::~storage_pool()
                     total_size)),
                 total_size);
         }
-        if (device.readwritefd_ != -1) {
-            (void)::fsync(device.readwritefd_);
-            (void)::close(device.readwritefd_);
+        if (device.uncached_readfd_ != -1) {
+            (void)::close(device.uncached_readfd_);
+        }
+        if (device.cached_readwritefd_ != -1) {
+            (void)::fsync(device.cached_readwritefd_);
+            (void)::close(device.cached_readwritefd_);
         }
     }
     devices_.clear();
@@ -827,8 +842,8 @@ storage_pool::chunk_t storage_pool::activate_chunk(
         case chunk_type::cnv:
             return chunk_t{
                 device,
-                device.readwritefd_,
-                device.readwritefd_,
+                device.cached_readwritefd_,
+                device.cached_readwritefd_,
                 file_offset_t(id_within_device) *
                     device.metadata_->chunk_capacity,
                 device.metadata_->chunk_capacity,
@@ -838,10 +853,13 @@ storage_pool::chunk_t storage_pool::activate_chunk(
                 false,
                 false};
         case chunk_type::seq: {
+            auto const rwfd = device.is_uncached_io()
+                                  ? device.uncached_readfd_
+                                  : device.cached_readwritefd_;
             return chunk_t{
                 device,
-                device.readwritefd_,
-                device.readwritefd_,
+                rwfd,
+                rwfd,
                 file_offset_t(id_within_device) *
                     device.metadata_->chunk_capacity,
                 device.metadata_->chunk_capacity,
