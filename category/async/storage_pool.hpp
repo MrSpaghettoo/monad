@@ -81,7 +81,9 @@ public:
     {
         friend class storage_pool;
 
-        int const readwritefd_; // shared by all chunks for cached i/o
+        int const cached_readwritefd_; // used for the device memory map of its
+                                       // metadata (not O_DIRECT)
+        int const uncached_readfd_; // used for random read i/o (O_DIRECT)
         const enum class type_t_ : uint8_t {
             unknown,
             file,
@@ -144,9 +146,11 @@ public:
         static_assert(sizeof(metadata_t) == 64);
 
         constexpr device_t(
-            int readwritefd, type_t_ type, uint64_t unique_hash,
-            file_offset_t size_of_file, metadata_t *metadata)
-            : readwritefd_(readwritefd)
+            int const cached_readwritefd, int const uncached_readfd,
+            type_t_ type, uint64_t unique_hash, file_offset_t size_of_file,
+            metadata_t *metadata)
+            : cached_readwritefd_(cached_readwritefd)
+            , uncached_readfd_(uncached_readfd)
             , type_(type)
             , unique_hash_(unique_hash)
             , size_of_file_(size_of_file)
@@ -174,6 +178,11 @@ public:
         bool is_zoned_device() const noexcept
         {
             return type_ == type_t_::zoned_device;
+        }
+
+        bool is_uncached_io() const noexcept
+        {
+            return uncached_readfd_ != -1;
         }
 
         //! Returns the number of chunks on this device
@@ -320,6 +329,9 @@ public:
         //! can cause pool data loss, as well as system data loss as it will
         //! happily use any partition you feed it, including the system drive.
         uint32_t disable_mismatching_storage_pool_check : 1;
+        //! Whether to open an additional file descriptor for uncached reads
+        //! that bypass kernel buffer cache
+        uint32_t uncached_read : 1;
 
         constexpr creation_flags()
             : chunk_capacity(28)
@@ -327,6 +339,7 @@ public:
             , open_read_only(false)
             , open_read_only_allow_dirty(false)
             , disable_mismatching_storage_pool_check(false)
+            , uncached_read(false)
         {
         }
     };
