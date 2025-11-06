@@ -158,7 +158,8 @@ public:
         std::vector<std::vector<CallFrame>> const &,
         std::vector<Address> const &, std::vector<Transaction> const &,
         std::vector<BlockHeader> const &,
-        std::optional<std::vector<Withdrawal>> const &) override
+        std::optional<std::vector<Withdrawal>> const &,
+        std::optional<std::vector<Request>> const &) override
     {
         MONAD_ABORT("Use DbCache commit with unique_ptr arg.");
     }
@@ -171,7 +172,8 @@ public:
         std::vector<Address> const &senders = {},
         std::vector<Transaction> const &transactions = {},
         std::vector<BlockHeader> const &ommers = {},
-        std::optional<std::vector<Withdrawal>> const &withdrawals = {}) override
+        std::optional<std::vector<Withdrawal>> const &withdrawals = {},
+        std::optional<std::vector<Request>> const &requests = {}) override
     {
         db_.commit(
             *state_deltas,
@@ -183,7 +185,8 @@ public:
             senders,
             transactions,
             ommers,
-            withdrawals);
+            withdrawals,
+            requests);
 
         proposals_.commit(std::move(state_deltas), header.number, block_id);
     }
@@ -211,6 +214,10 @@ public:
     virtual std::optional<bytes32_t> withdrawals_root() override
     {
         return db_.withdrawals_root();
+    }
+    virtual std::optional<bytes32_t> requests_root() override
+    {
+        return db_.requests_root();
     }
 
     virtual std::string print_stats() override

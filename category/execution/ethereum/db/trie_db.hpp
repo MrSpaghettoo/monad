@@ -74,7 +74,8 @@ public:
         std::vector<Address> const & = {},
         std::vector<Transaction> const & = {},
         std::vector<BlockHeader> const &ommers = {},
-        std::optional<std::vector<Withdrawal>> const & = std::nullopt) override;
+        std::optional<std::vector<Withdrawal>> const & = std::nullopt,
+        std::optional<std::vector<Request>> const & = std::nullopt) override;
     virtual void
     finalize(uint64_t block_number, bytes32_t const &block_id) override;
     virtual void update_verified_block(uint64_t block_number) override;
@@ -86,6 +87,7 @@ public:
     virtual bytes32_t receipts_root() override;
     virtual bytes32_t transactions_root() override;
     virtual std::optional<bytes32_t> withdrawals_root() override;
+    virtual std::optional<bytes32_t> requests_root() override;
     virtual std::string print_stats() override;
     virtual uint64_t get_block_number() const override;
 

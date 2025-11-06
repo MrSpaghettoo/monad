@@ -263,6 +263,11 @@ std::optional<bytes32_t> monad_statesync_server_context::withdrawals_root()
     return rw.withdrawals_root();
 }
 
+std::optional<bytes32_t> monad_statesync_server_context::requests_root()
+{
+    return rw.requests_root();
+}
+
 void monad_statesync_server_context::set_block_and_prefix(
     uint64_t const block_number, bytes32_t const &block_id)
 {
@@ -296,7 +301,8 @@ void monad_statesync_server_context::commit(
     std::vector<Address> const &senders,
     std::vector<Transaction> const &transactions,
     std::vector<BlockHeader> const &ommers,
-    std::optional<std::vector<Withdrawal>> const &withdrawals)
+    std::optional<std::vector<Withdrawal>> const &withdrawals,
+    std::optional<std::vector<Request>> const &requests)
 {
     on_commit(*this, state_deltas, header.number, block_id);
     rw.commit(
@@ -309,7 +315,8 @@ void monad_statesync_server_context::commit(
         senders,
         transactions,
         ommers,
-        withdrawals);
+        withdrawals,
+        requests);
 }
 
 uint64_t monad_statesync_server_context::get_block_number() const

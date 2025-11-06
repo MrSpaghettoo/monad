@@ -80,6 +80,8 @@ add_library(
   "ethereum/core/rlp/signature_rlp.hpp"
   "ethereum/core/rlp/transaction_rlp.cpp"
   "ethereum/core/rlp/transaction_rlp.hpp"
+  "ethereum/core/rlp/request_rlp.cpp"
+  "ethereum/core/rlp/request_rlp.hpp"
   "ethereum/core/rlp/withdrawal_rlp.cpp"
   "ethereum/core/rlp/withdrawal_rlp.hpp"
   "ethereum/core/signature.cpp"
@@ -87,6 +89,7 @@ add_library(
   "ethereum/core/transaction.cpp"
   "ethereum/core/transaction.hpp"
   "ethereum/core/variant.hpp"
+  "ethereum/core/request.hpp"
   "ethereum/core/withdrawal.hpp"
   # ethereum/db
   "ethereum/db/block_db.cpp"

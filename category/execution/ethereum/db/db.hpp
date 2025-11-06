@@ -23,6 +23,7 @@
 #include <category/execution/ethereum/core/block.hpp>
 #include <category/execution/ethereum/core/receipt.hpp>
 #include <category/execution/ethereum/core/transaction.hpp>
+#include <category/execution/ethereum/core/request.hpp>
 #include <category/execution/ethereum/core/withdrawal.hpp>
 #include <category/execution/ethereum/state2/state_deltas.hpp>
 #include <category/execution/ethereum/trace/call_frame.hpp>
@@ -48,6 +49,7 @@ struct Db
     virtual bytes32_t receipts_root() = 0;
     virtual bytes32_t transactions_root() = 0;
     virtual std::optional<bytes32_t> withdrawals_root() = 0;
+    virtual std::optional<bytes32_t> requests_root() = 0;
 
     // empty block_id represents the finalized block
     virtual void set_block_and_prefix(
@@ -66,7 +68,8 @@ struct Db
         std::vector<Address> const & = {},
         std::vector<Transaction> const & = {},
         std::vector<BlockHeader> const &ommers = {},
-        std::optional<std::vector<Withdrawal>> const & = std::nullopt) = 0;
+        std::optional<std::vector<Withdrawal>> const & = std::nullopt,
+        std::optional<std::vector<Request>> const & = std::nullopt) = 0;
 
     virtual void commit(
         std::unique_ptr<StateDeltas> state_deltas, Code const &code,
@@ -76,7 +79,8 @@ struct Db
         std::vector<Address> const &senders = {},
         std::vector<Transaction> const &transactions = {},
         std::vector<BlockHeader> const &ommers = {},
-        std::optional<std::vector<Withdrawal>> const &withdrawals = {})
+        std::optional<std::vector<Withdrawal>> const &withdrawals = {},
+        std::optional<std::vector<Request>> const &requests = {})
     {
         commit(
             *state_deltas,
@@ -88,7 +92,8 @@ struct Db
             senders,
             transactions,
             ommers,
-            withdrawals);
+            withdrawals,
+            requests);
     }
 
     virtual std::string print_stats()

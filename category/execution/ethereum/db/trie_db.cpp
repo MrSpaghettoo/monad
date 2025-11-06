@@ -30,6 +30,7 @@
 #include <category/execution/ethereum/core/rlp/bytes_rlp.hpp>
 #include <category/execution/ethereum/core/rlp/int_rlp.hpp>
 #include <category/execution/ethereum/core/rlp/receipt_rlp.hpp>
+#include <category/execution/ethereum/core/rlp/request_rlp.hpp>
 #include <category/execution/ethereum/core/rlp/transaction_rlp.hpp>
 #include <category/execution/ethereum/core/rlp/withdrawal_rlp.hpp>
 #include <category/execution/ethereum/db/trie_db.hpp>
@@ -182,7 +183,8 @@ void TrieDb::commit(
     std::vector<Address> const &senders,
     std::vector<Transaction> const &transactions,
     std::vector<BlockHeader> const &ommers,
-    std::optional<std::vector<Withdrawal>> const &withdrawals)
+    std::optional<std::vector<Withdrawal>> const &withdrawals,
+    std::optional<std::vector<Request>> const &requests)
 {
     MONAD_ASSERT(header.number <= std::numeric_limits<int64_t>::max());
 
@@ -398,6 +400,28 @@ void TrieDb::commit(
             .next = std::move(withdrawal_updates),
             .version = static_cast<int64_t>(block_number_)}));
     }
+    UpdateList request_updates;
+    if (requests.has_value()) {
+        // only commit requests when the optional has value
+        for (size_t i = 0; i < requests.value().size(); ++i) {
+            if (i >= index_alloc.size()) {
+                index_alloc.emplace_back(rlp::encode_unsigned(i));
+            }
+            request_updates.push_front(update_alloc_.emplace_back(Update{
+                .key = NibblesView{index_alloc[i]},
+                .value = bytes_alloc_.emplace_back(
+                    rlp::encode_request(requests.value()[i])),
+                .incarnation = false,
+                .next = UpdateList{},
+                .version = static_cast<int64_t>(block_number_)}));
+        }
+        updates.push_front(update_alloc_.emplace_back(Update{
+            .key = request_nibbles,
+            .value = byte_string_view{},
+            .incarnation = true,
+            .next = std::move(request_updates),
+            .version = static_cast<int64_t>(block_number_)}));
+    }
 
     UpdateList ls;
     ls.push_front(update_alloc_.emplace_back(Update{
@@ -423,6 +447,9 @@ void TrieDb::commit(
     }
     complete_header.state_root = state_root();
     complete_header.withdrawals_root = withdrawals_root();
+    if (requests.has_value()) {
+        complete_header.requests_hash = compute_requests_hash(requests.value());
+    }
     complete_header.transactions_root = transactions_root();
     complete_header.gas_used = receipts.empty() ? 0 : receipts.back().gas_used;
     complete_header.logs_bloom = compute_bloom(receipts);
@@ -561,6 +588,21 @@ std::optional<bytes32_t> TrieDb::withdrawals_root()
 {
     auto const res =
         db_.find(curr_root_, concat(prefix_, WITHDRAWAL_NIBBLE), block_number_);
+    if (res.has_error()) {
+        return std::nullopt;
+    }
+    auto const data = res.value().node->data();
+    if (data.empty()) {
+        return NULL_ROOT;
+    }
+    MONAD_ASSERT(data.size() == sizeof(bytes32_t));
+    return to_bytes(data);
+}
+
+std::optional<bytes32_t> TrieDb::requests_root()
+{
+    auto const res =
+        db_.find(curr_root_, concat(prefix_, REQUEST_NIBBLE), block_number_);
     if (res.has_error()) {
         return std::nullopt;
     }

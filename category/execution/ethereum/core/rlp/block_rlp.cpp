@@ -24,6 +24,7 @@
 #include <category/execution/ethereum/core/rlp/bytes_rlp.hpp>
 #include <category/execution/ethereum/core/rlp/int_rlp.hpp>
 #include <category/execution/ethereum/core/rlp/receipt_rlp.hpp>
+#include <category/execution/ethereum/core/rlp/request_rlp.hpp>
 #include <category/execution/ethereum/core/rlp/transaction_rlp.hpp>
 #include <category/execution/ethereum/core/rlp/withdrawal_rlp.hpp>
 #include <category/execution/ethereum/core/transaction.hpp>
@@ -130,6 +131,14 @@ byte_string encode_block(Block const &block)
         encoded_block += encode_list2(encoded_block_withdrawals);
     }
 
+    if (block.requests.has_value()) {
+        byte_string encoded_block_requests;
+        for (auto const &request : block.requests.value()) {
+            encoded_block_requests += encode_request(request);
+        }
+        encoded_block += encode_list2(encoded_block_requests);
+    }
+
     return encode_list2(encoded_block);
 }
 
@@ -226,6 +235,11 @@ Result<Block> decode_block(byte_string_view &enc)
     if (payload.size() > 0) {
         BOOST_OUTCOME_TRY(auto withdrawals, decode_withdrawal_list(payload));
         block.withdrawals.emplace(std::move(withdrawals));
+
+        if (payload.size() > 0) {
+            BOOST_OUTCOME_TRY(auto requests, decode_request_list(payload));
+            block.requests.emplace(std::move(requests));
+        }
     }
 
     if (MONAD_UNLIKELY(!payload.empty())) {

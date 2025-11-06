@@ -18,6 +18,7 @@
 #include <category/core/bytes.hpp>
 #include <category/core/config.hpp>
 #include <category/core/result.hpp>
+#include <category/execution/ethereum/core/request.hpp>
 #include <category/execution/ethereum/core/receipt.hpp>
 #include <category/vm/evm/traits.hpp>
 
@@ -64,6 +65,8 @@ struct BlockHeader;
 Receipt::Bloom compute_bloom(std::vector<Receipt> const &);
 
 bytes32_t compute_ommers_hash(std::vector<BlockHeader> const &);
+
+bytes32_t compute_requests_hash(std::vector<Request> const &);
 
 template <Traits traits>
 Result<void> static_validate_header(BlockHeader const &);

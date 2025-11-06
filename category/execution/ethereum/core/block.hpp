@@ -21,6 +21,7 @@
 #include <category/execution/ethereum/core/address.hpp>
 #include <category/execution/ethereum/core/receipt.hpp>
 #include <category/execution/ethereum/core/transaction.hpp>
+#include <category/execution/ethereum/core/request.hpp>
 #include <category/execution/ethereum/core/withdrawal.hpp>
 
 #include <cstdint>
@@ -66,6 +67,7 @@ struct Block
     std::vector<Transaction> transactions{};
     std::vector<BlockHeader> ommers{};
     std::optional<std::vector<Withdrawal>> withdrawals{std::nullopt};
+    std::optional<std::vector<Request>> requests{std::nullopt};
 
     friend bool operator==(Block const &, Block const &) = default;
 };
@@ -73,7 +75,7 @@ struct Block
 static_assert(sizeof(BlockHeader) == 760);
 static_assert(alignof(BlockHeader) == 8);
 
-static_assert(sizeof(Block) == 840);
+static_assert(sizeof(Block) == 872);
 static_assert(alignof(Block) == 8);
 
 MONAD_NAMESPACE_END

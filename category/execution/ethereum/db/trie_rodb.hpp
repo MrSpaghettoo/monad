@@ -139,7 +139,8 @@ public:
         std::vector<Address> const & = {},
         std::vector<Transaction> const & = {},
         std::vector<BlockHeader> const & = {},
-        std::optional<std::vector<Withdrawal>> const & = std::nullopt) override
+        std::optional<std::vector<Withdrawal>> const & = std::nullopt,
+        std::optional<std::vector<Request>> const & = std::nullopt) override
     {
         MONAD_ABORT();
     }
@@ -180,6 +181,11 @@ public:
     }
 
     virtual std::optional<bytes32_t> withdrawals_root() override
+    {
+        MONAD_ABORT();
+    }
+
+    virtual std::optional<bytes32_t> requests_root() override
     {
         MONAD_ABORT();
     }

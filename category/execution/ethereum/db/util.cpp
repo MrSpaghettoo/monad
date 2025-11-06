@@ -563,8 +563,9 @@ void MachineBase::down(unsigned char const nibble)
         (nibble == STATE_NIBBLE || nibble == CODE_NIBBLE ||
          nibble == RECEIPT_NIBBLE || nibble == CALL_FRAME_NIBBLE ||
          nibble == TRANSACTION_NIBBLE || nibble == BLOCKHEADER_NIBBLE ||
-         nibble == WITHDRAWAL_NIBBLE || nibble == OMMER_NIBBLE ||
-         nibble == TX_HASH_NIBBLE || nibble == BLOCK_HASH_NIBBLE) ||
+         nibble == WITHDRAWAL_NIBBLE || nibble == REQUEST_NIBBLE ||
+         nibble == OMMER_NIBBLE || nibble == TX_HASH_NIBBLE ||
+         nibble == BLOCK_HASH_NIBBLE) ||
         depth != prefix_length);
     if (MONAD_UNLIKELY(depth == prefix_length)) {
         MONAD_ASSERT(table == TableType::Prefix);
@@ -582,6 +583,9 @@ void MachineBase::down(unsigned char const nibble)
         }
         else if (nibble == WITHDRAWAL_NIBBLE) {
             table = TableType::Withdrawal;
+        }
+        else if (nibble == REQUEST_NIBBLE) {
+            table = TableType::Request;
         }
         else if (nibble == TX_HASH_NIBBLE) {
             table = TableType::TxHash;

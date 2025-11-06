@@ -117,6 +117,7 @@ struct monad_statesync_server_context final : public monad::Db
     virtual monad::bytes32_t transactions_root() override;
 
     virtual std::optional<monad::bytes32_t> withdrawals_root() override;
+    virtual std::optional<monad::bytes32_t> requests_root() override;
 
     virtual void set_block_and_prefix(
         uint64_t block_number,
@@ -136,6 +137,8 @@ struct monad_statesync_server_context final : public monad::Db
         std::vector<monad::Transaction> const &transactions = {},
         std::vector<monad::BlockHeader> const &ommers = {},
         std::optional<std::vector<monad::Withdrawal>> const & =
+            std::nullopt,
+        std::optional<std::vector<monad::Request>> const & =
             std::nullopt) override;
 
     virtual uint64_t get_block_number() const override;

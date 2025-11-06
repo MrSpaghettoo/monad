@@ -114,6 +114,15 @@ Result<void> EthereumMainnet::validate_output_header(
     if (MONAD_UNLIKELY(input.withdrawals_root != output.withdrawals_root)) {
         return BlockError::WrongMerkleRoot;
     }
+    if (MONAD_UNLIKELY(
+            input.requests_hash.has_value() != output.requests_hash.has_value())) {
+        return BlockError::WrongMerkleRoot;
+    }
+    if (MONAD_UNLIKELY(
+            input.requests_hash.has_value() &&
+            input.requests_hash.value() != output.requests_hash.value())) {
+        return BlockError::WrongMerkleRoot;
+    }
 
     // Second, validate execution outputs known before commit.
 

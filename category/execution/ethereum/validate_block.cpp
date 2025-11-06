@@ -23,6 +23,7 @@
 #include <category/execution/ethereum/core/block.hpp>
 #include <category/execution/ethereum/core/receipt.hpp>
 #include <category/execution/ethereum/core/rlp/block_rlp.hpp>
+#include <category/execution/ethereum/core/rlp/request_rlp.hpp>
 #include <category/execution/ethereum/core/transaction.hpp>
 #include <category/execution/ethereum/transaction_gas.hpp>
 #include <category/execution/ethereum/validate_block.hpp>
@@ -44,6 +45,7 @@
 #include <boost/outcome/success_failure.hpp>
 #include <boost/outcome/try.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <initializer_list>
 #include <limits>
@@ -70,6 +72,27 @@ bytes32_t compute_ommers_hash(std::vector<BlockHeader> const &ommers)
         return NULL_LIST_HASH;
     }
     return to_bytes(keccak256(rlp::encode_ommers(ommers)));
+}
+
+bytes32_t compute_requests_hash(std::vector<Request> const &requests)
+{
+    if (requests.empty()) {
+        return NULL_LIST_HASH;
+    }
+    // EIP-7685: requests_hash is computed by hashing each request and then
+    // hashing the concatenation of those hashes. Requests must be ordered by
+    // request_type in ascending order.
+    std::vector<Request> sorted_requests = requests;
+    std::sort(sorted_requests.begin(), sorted_requests.end(),
+              [](Request const &a, Request const &b) {
+                  return a.request_type < b.request_type;
+              });
+    byte_string concatenated_hashes;
+    for (auto const &request : sorted_requests) {
+        auto const request_hash = keccak256(rlp::encode_request(request));
+        concatenated_hashes += to_byte_string_view(request_hash.bytes);
+    }
+    return to_bytes(keccak256(concatenated_hashes));
 }
 
 template <Traits traits>
@@ -229,6 +252,23 @@ constexpr Result<void> static_validate_body(Block const &block)
             return BlockError::MissingField;
         }
     }
+
+    // EIP-7685
+    if constexpr (traits::evm_rev() < EVMC_PRAGUE) {
+        if (MONAD_UNLIKELY(block.requests.has_value())) {
+            return BlockError::FieldBeforeFork;
+        }
+    }
+    // else {
+    //     if (MONAD_UNLIKELY(!block.requests.has_value())) {
+    //         return BlockError::MissingField;
+    //     }
+    //     // Validate requests_hash matches computed hash
+    //     auto const computed_hash = compute_requests_hash(block.requests.value());
+    //     if (MONAD_UNLIKELY(block.header.requests_hash.value() != computed_hash)) {
+    //         return BlockError::WrongMerkleRoot;
+    //     }
+    // }
 
     BOOST_OUTCOME_TRY(static_validate_ommers<traits>(block));
     BOOST_OUTCOME_TRY(static_validate_4844<traits>(block));
