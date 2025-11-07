@@ -492,19 +492,19 @@ storage_pool::device_t storage_pool::make_device_(
     if (auto const **const dev = std::get_if<1>(&dev_no_or_dev)) {
         unique_hash = (*dev)->unique_hash_;
     }
-    int uncached_readfd = -1;
-    if (flags.uncached_read) {
-        MONAD_ASSERT(flags.open_read_only);
-        // For direct read, we need a separate fd with O_DIRECT
-        uncached_readfd = ::open(path.c_str(), O_RDONLY | O_CLOEXEC | O_DIRECT);
+    int uncached_readwritefd = fd;
+    if (!path.empty()) {
+        uncached_readwritefd = ::open(
+            path.c_str(),
+            (flags.open_read_only ? O_RDONLY : O_RDWR) | O_CLOEXEC | O_DIRECT);
         MONAD_ASSERT_PRINTF(
-            uncached_readfd != -1,
+            uncached_readwritefd != -1,
             "open failed due to %s",
             std::strerror(errno));
     }
     return device_t(
         readwritefd,
-        uncached_readfd,
+        uncached_readwritefd,
         type,
         unique_hash,
         static_cast<size_t>(stat.st_size),
@@ -809,8 +809,9 @@ storage_pool::~storage_pool()
                     total_size)),
                 total_size);
         }
-        if (device.uncached_readfd_ != -1) {
-            (void)::close(device.uncached_readfd_);
+        if (device.uncached_readwritefd_ != -1) {
+            (void)::fsync(device.uncached_readwritefd_);
+            (void)::close(device.uncached_readwritefd_);
         }
         if (device.cached_readwritefd_ != -1) {
             (void)::fsync(device.cached_readwritefd_);
@@ -853,13 +854,10 @@ storage_pool::chunk_t storage_pool::activate_chunk(
                 false,
                 false};
         case chunk_type::seq: {
-            auto const rwfd = device.is_uncached_io()
-                                  ? device.uncached_readfd_
-                                  : device.cached_readwritefd_;
             return chunk_t{
                 device,
-                rwfd,
-                rwfd,
+                device.uncached_readwritefd_,
+                device.uncached_readwritefd_,
                 file_offset_t(id_within_device) *
                     device.metadata_->chunk_capacity,
                 device.metadata_->chunk_capacity,

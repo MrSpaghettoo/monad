@@ -345,7 +345,6 @@ try {
         sync_thread = std::jthread([&](std::stop_token const token) {
             pthread_setname_np(pthread_self(), "statesync thread");
             mpt::AsyncIOContext io_ctx{mpt::ReadOnlyOnDiskDbConfig{
-                .uncached_read = true,
                 .low_io_priority = true,
                 .sq_thread_cpu = ro_sq_thread_cpu,
                 .dbname_paths = dbname_paths}};
