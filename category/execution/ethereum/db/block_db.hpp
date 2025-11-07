@@ -16,6 +16,7 @@
 #pragma once
 
 #include <category/core/config.hpp>
+#include <category/execution/ethereum/chain/chain_config.h>
 #include <category/execution/ethereum/db/file_db.hpp>
 
 #include <cstdint>
@@ -36,7 +37,7 @@ public:
     explicit BlockDb(std::filesystem::path const &);
     ~BlockDb() = default;
 
-    bool get(uint64_t, Block &) const;
+    bool get(uint64_t, Block &, monad_chain_config const chain_config = CHAIN_CONFIG_ETHEREUM_MAINNET) const;
 };
 
 MONAD_NAMESPACE_END
