@@ -1556,8 +1556,8 @@ namespace monad::vm::runtime
         return result;
     }
 
-    /* Checked operations; these raise an exception in case of overflow or
-     * division by zero. They are not optimized. */
+    /* Checked operations; these return a Result indicating success or an error
+     * (overflow, underflow, or division by zero). They are not optimized. */
     enum class MathError
     {
         Success = 0,
