@@ -33,7 +33,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <optional>
 #include <vector>
 
@@ -45,9 +44,6 @@ class State
 {
     template <typename K, typename V>
     using Map = ankerl::unordered_dense::segmented_map<K, V>;
-
-    template <typename K>
-    using Set = ankerl::unordered_dense::segmented_set<K>;
 
     BlockState &block_state_;
 
@@ -62,8 +58,6 @@ class State
     Map<bytes32_t, vm::SharedVarcode> code_{};
 
     unsigned version_{0};
-
-    std::deque<Set<Address>> dirty_;
 
     bool const relaxed_validation_{false};
 
