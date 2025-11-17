@@ -1226,6 +1226,8 @@ void UpdateAuxImpl::adjust_history_length_based_on_disk_usage()
     constexpr double upper_bound = 0.8;
     constexpr double lower_bound = 0.6;
 
+    auto const begin = std::chrono::steady_clock::now();
+
     // Shorten history length when disk usage is high
     auto const max_version = db_history_max_version();
     if (max_version == INVALID_BLOCK_NUM) {
@@ -1250,9 +1252,13 @@ void UpdateAuxImpl::adjust_history_length_based_on_disk_usage()
             disk_usage() <= upper_bound ||
             version_history_length() == MIN_HISTORY_LENGTH);
         LOG_INFO_CFORMAT(
-            "Adjust db history length down from %lu to %lu",
+            "Adjust db history length down from %lu to %lu. Time elapsed: %ld "
+            "us",
             history_length_before,
-            version_history_length());
+            version_history_length(),
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - begin)
+                .count());
     }
     // Raise history length limit when disk usage falls low
     else if (auto const offsets = root_offsets();
@@ -1260,9 +1266,12 @@ void UpdateAuxImpl::adjust_history_length_based_on_disk_usage()
              version_history_length() < offsets.capacity()) {
         update_history_length_metadata(offsets.capacity());
         LOG_INFO_CFORMAT(
-            "Adjust db history length up from %lu to %lu",
+            "Adjust db history length up from %lu to %lu. Time elapsed: %ld us",
             history_length_before,
-            version_history_length());
+            version_history_length(),
+            std::chrono::duration_cast<std::chrono::microseconds>(
+                std::chrono::steady_clock::now() - begin)
+                .count());
     }
 }
 
