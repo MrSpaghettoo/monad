@@ -77,6 +77,32 @@ std::optional<Account> BlockState::read_account(Address const &address)
     }
 }
 
+std::pair<std::optional<Account>, bool>
+BlockState::read_account_and_status(Address const &address)
+{
+    // block state
+    {
+        StateDeltas::const_accessor it{};
+        MONAD_ASSERT(state_);
+        if (MONAD_LIKELY(state_->find(it, address))) {
+            return {it->second.account.second, it->second.account_is_warm};
+        }
+    }
+    // database
+    {
+        auto const [result, status] = db_.read_account_and_status(address);
+        StateDeltas::const_accessor it{};
+        state_->emplace(
+            it,
+            address,
+            StateDelta{
+                .account = {result, result},
+                .storage = {},
+                .account_is_warm = status});
+        return {it->second.account.second, status};
+    }
+}
+
 bytes32_t BlockState::read_storage(
     Address const &address, Incarnation const incarnation, bytes32_t const &key)
 {
@@ -118,6 +144,56 @@ bytes32_t BlockState::read_storage(
             StorageDeltas::const_accessor it2{};
             storage.emplace(it2, key, std::make_pair(result, result));
             return it2->second.second;
+        }
+    }
+}
+
+std::pair<bytes32_t, bool> BlockState::read_storage_and_status(
+    Address const &address, Incarnation const incarnation, bytes32_t const &key)
+{
+    bool read_storage = false;
+    // block state
+    {
+        StateDeltas::const_accessor it{};
+        MONAD_ASSERT(state_);
+        MONAD_ASSERT(state_->find(it, address));
+        auto const &account = it->second.account.second;
+        if (!account || incarnation != account->incarnation) {
+            return {};
+        }
+        auto const &storage = it->second.storage;
+        {
+            StorageDeltas::const_accessor it2{};
+            if (MONAD_LIKELY(storage.find(it2, key))) {
+                return {it2->second.second, it->second.warm_keys.contains(key)};
+            }
+        }
+        auto const &orig_account = it->second.account.first;
+        if (orig_account && incarnation == orig_account->incarnation) {
+            read_storage = true;
+        }
+    }
+    // database
+    {
+        auto const [result, status] =
+            read_storage
+                ? db_.read_storage_and_status(address, incarnation, key)
+                : std::pair{bytes32_t{}, false};
+        StateDeltas::accessor it{};
+        MONAD_ASSERT(state_->find(it, address));
+        auto const &account = it->second.account.second;
+        if (!account || incarnation != account->incarnation) {
+            // TODO: return false???
+            return {result, status};
+        }
+        auto &storage = it->second.storage;
+        {
+            if (status) {
+                it->second.warm_keys.insert(key);
+            }
+            StorageDeltas::const_accessor it2{};
+            storage.emplace(it2, key, std::make_pair(result, result));
+            return {it2->second.second, status};
         }
     }
 }
