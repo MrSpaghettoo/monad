@@ -1336,6 +1336,8 @@ void UpdateAuxImpl::advance_compact_offsets()
     MONAD_ASSERT(is_on_disk());
 
     constexpr auto fast_usage_limit_start_compaction = 0.1;
+    constexpr uint32_t max_compact_offset_range = 512; // 32MB
+
     auto const fast_disk_usage =
         num_chunks(chunk_list::fast) / (double)io->chunk_count();
     if (fast_disk_usage < fast_usage_limit_start_compaction) {
@@ -1347,13 +1349,40 @@ void UpdateAuxImpl::advance_compact_offsets()
         compact_offset_slow != INVALID_COMPACT_VIRTUAL_OFFSET);
     compact_offset_range_fast_ = MIN_COMPACT_VIRTUAL_OFFSET;
 
-    /* Compact the fast ring based on average disk growth over recent blocks. */
+    /* The fast chunk compaction offset range is determined primarily by the
+    average disk growth over historical blocks. It is further adjusted using
+    the disk offset range of the latest version so that fast-list usage adapts
+    appropriately to changes in history length. Shorter histories typically
+    correspond to a smaller offset range.
+     */
     if (compact_offset_fast < last_block_end_offset_fast_) {
-        auto const valid_history_length =
-            db_history_max_version() - db_history_min_valid_version() + 1;
-        compact_offset_range_fast_.set_value(divide_and_round(
-            last_block_end_offset_fast_ - compact_offset_fast,
-            valid_history_length));
+        // get the earliest version whose root is written to fast list
+        uint64_t min_version_on_fast = db_history_min_valid_version();
+        auto virtual_root_offset = physical_to_virtual(
+            get_root_offset_at_version(min_version_on_fast));
+        while (!virtual_root_offset.in_fast_list()) {
+            min_version_on_fast++;
+            if (version_is_valid_ondisk(min_version_on_fast)) {
+                virtual_root_offset = physical_to_virtual(
+                    get_root_offset_at_version(min_version_on_fast));
+            }
+        }
+        compact_virtual_chunk_offset_t const min_root_compacted_offset{
+            virtual_root_offset};
+        compact_virtual_chunk_offset_t const curr_fast_writer_offset{
+            physical_to_virtual(node_writer_fast->sender().offset())};
+        auto const max_version = db_history_max_version();
+        MONAD_ASSERT(max_version > min_version_on_fast);
+        uint32_t const avg_disk_growth_fast = divide_and_round(
+            curr_fast_writer_offset - min_root_compacted_offset,
+            max_version - min_version_on_fast);
+        uint32_t const target_fast_compaction_stride = divide_and_round(
+            curr_fast_writer_offset - compact_offset_fast,
+            max_version - db_history_min_valid_version() + 1);
+        uint32_t to_advance =
+            std::min(target_fast_compaction_stride, avg_disk_growth_fast + 8);
+        to_advance = std::min(to_advance, max_compact_offset_range);
+        compact_offset_range_fast_.set_value(to_advance);
         compact_offset_fast += compact_offset_range_fast_;
     }
     constexpr double usage_limit_start_compact_slow = 0.6;
