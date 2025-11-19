@@ -60,14 +60,14 @@ using BOOST_OUTCOME_V2_NAMESPACE::success;
 template <Traits traits>
 ExecuteSystemTransaction<traits>::ExecuteSystemTransaction(
     Chain const &chain, uint64_t const i, Transaction const &tx,
-    Address const &sender, ExecutionInputs const &execution_inputs,
+    Address const &sender, BlockHeaderInputs const &header_inputs,
     BlockState &block_state, BlockMetrics &block_metrics,
     boost::fibers::promise<void> &prev, CallTracerBase &call_tracer)
     : chain_{chain}
     , i_{i}
     , tx_{tx}
     , sender_{sender}
-    , execution_inputs_{execution_inputs}
+    , header_inputs_{header_inputs}
     , block_state_{block_state}
     , block_metrics_{block_metrics}
     , prev_{prev}
@@ -97,7 +97,7 @@ Result<Receipt> ExecuteSystemTransaction<traits>::operator()()
         TRACE_TXN_EVENT(StartExecution);
 
         State state{
-            block_state_, Incarnation{execution_inputs_.number, i_ + 1}};
+            block_state_, Incarnation{header_inputs_.number, i_ + 1}};
         state.set_original_nonce(sender_, tx_.nonce);
 
         call_tracer_.reset();
@@ -123,7 +123,7 @@ Result<Receipt> ExecuteSystemTransaction<traits>::operator()()
         TRACE_TXN_EVENT(StartRetry);
 
         State state{
-            block_state_, Incarnation{execution_inputs_.number, i_ + 1}};
+            block_state_, Incarnation{header_inputs_.number, i_ + 1}};
 
         call_tracer_.reset();
 

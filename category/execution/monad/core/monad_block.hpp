@@ -117,7 +117,7 @@ struct MonadConsensusBlockHeader
     uint128_t timestamp_ns{0};
     byte_string_fixed<96> round_signature{};
     std::vector<BlockHeader> delayed_execution_results{};
-    ExecutionInputs execution_inputs{};
+    BlockHeaderInputs header_inputs{};
     bytes32_t block_body_id{NULL_HASH_BLAKE3};
 
     bytes32_t parent_id() const noexcept

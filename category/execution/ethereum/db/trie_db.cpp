@@ -176,7 +176,7 @@ vm::SharedIntercode TrieDb::read_code(bytes32_t const &code_hash)
 
 void TrieDb::commit(
     StateDeltas const &state_deltas, Code const &code,
-    bytes32_t const &block_id, ExecutionInputs const &execution_inputs,
+    bytes32_t const &block_id, BlockHeaderInputs const &header_inputs,
     std::vector<Receipt> const &receipts,
     std::vector<std::vector<CallFrame>> const &call_frames,
     std::vector<Address> const &senders,
@@ -186,25 +186,25 @@ void TrieDb::commit(
     OutputHeaderPatchFn header_patch_fn)
 {
     MONAD_ASSERT(
-        execution_inputs.number <= std::numeric_limits<int64_t>::max());
+        header_inputs.number <= std::numeric_limits<int64_t>::max());
 
     MONAD_ASSERT(block_id != bytes32_t{});
     if (db_.is_on_disk() && block_id != proposal_block_id_) {
         auto const dest_prefix = proposal_prefix(block_id);
         if (db_.get_latest_version() != INVALID_BLOCK_NUM) {
-            MONAD_ASSERT(execution_inputs.number != block_number_);
+            MONAD_ASSERT(header_inputs.number != block_number_);
             curr_root_ = db_.copy_trie(
                 curr_root_,
                 prefix_,
-                db_.load_root_for_version(execution_inputs.number),
+                db_.load_root_for_version(header_inputs.number),
                 dest_prefix,
-                execution_inputs.number,
+                header_inputs.number,
                 false);
         }
         proposal_block_id_ = block_id;
         prefix_ = dest_prefix;
     }
-    block_number_ = execution_inputs.number;
+    block_number_ = header_inputs.number;
 
     UpdateList account_updates;
     for (auto const &[addr, delta] : state_deltas) {
@@ -270,7 +270,7 @@ void TrieDb::commit(
     MONAD_ASSERT(receipts.size() == call_frames.size());
     MONAD_ASSERT(receipts.size() <= std::numeric_limits<uint32_t>::max());
     auto const &encoded_block_number = bytes_alloc_.emplace_back(
-        rlp::encode_unsigned(execution_inputs.number));
+        rlp::encode_unsigned(header_inputs.number));
     std::vector<byte_string> index_alloc;
     index_alloc.reserve(
         std::max(
@@ -424,7 +424,7 @@ void TrieDb::commit(
     curr_root_ = db_.upsert(
         std::move(curr_root_), std::move(ls), block_number_, true, true, false);
 
-    BlockHeader complete_header{{execution_inputs}};
+    BlockHeader complete_header{{header_inputs}};
     complete_header.state_root = state_root();
     complete_header.withdrawals_root = withdrawals_root();
     complete_header.transactions_root = transactions_root();

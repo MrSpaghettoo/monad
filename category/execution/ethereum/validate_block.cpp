@@ -73,7 +73,7 @@ bytes32_t compute_ommers_hash(std::vector<BlockHeader> const &ommers)
 }
 
 template <Traits traits>
-Result<void> static_validate_header(ExecutionInputs const &inputs)
+Result<void> static_validate_header(BlockHeaderInputs const &inputs)
 {
     // YP eq. 56
     if (MONAD_UNLIKELY(inputs.gas_limit < 5000)) {
@@ -164,7 +164,7 @@ constexpr Result<void> static_validate_ommers(InputBlockView const block)
 {
     // YP eq. 33
     if (compute_ommers_hash(block.ommers) !=
-        block.execution_inputs.ommers_hash) {
+        block.header_inputs.ommers_hash) {
         return BlockError::WrongOmmersHash;
     }
 
@@ -209,7 +209,7 @@ constexpr Result<void> static_validate_4844(InputBlockView const block)
             return BlockError::GasAboveLimit;
         }
         if (MONAD_UNLIKELY(
-                block.execution_inputs.blob_gas_used.value() !=
+                block.header_inputs.blob_gas_used.value() !=
                 blob_gas_used)) {
             return BlockError::InvalidGasUsed;
         }
@@ -241,7 +241,7 @@ constexpr Result<void> static_validate_body(InputBlockView const block)
 template <Traits traits>
 Result<void> static_validate_block(InputBlockView const block)
 {
-    BOOST_OUTCOME_TRY(static_validate_header<traits>(block.execution_inputs));
+    BOOST_OUTCOME_TRY(static_validate_header<traits>(block.header_inputs));
 
     BOOST_OUTCOME_TRY(static_validate_body<traits>(block));
 

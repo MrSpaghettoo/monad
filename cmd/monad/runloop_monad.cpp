@@ -115,7 +115,7 @@ bool has_executed(
 }
 
 Result<void>
-validate_output_header(ExecutionInputs const &input, BlockHeader const &output)
+validate_output_header(BlockHeaderInputs const &input, BlockHeader const &output)
 {
     if (MONAD_UNLIKELY(input.ommers_hash != output.ommers_hash)) {
         return BlockError::WrongOmmersHash;
@@ -173,8 +173,8 @@ Result<BlockExecOutput> propose_block(
     MonadConsensusBlockHeader const &consensus_header,
     InputBlockView const block, BlockHashChain &block_hash_chain,
     MonadChain const &chain, Db &db, vm::VM &vm,
-    fiber::PriorityPool &priority_pool, bool const is_first_block,
-    bool const enable_tracing, BlockCache &block_cache)
+    fiber::PriorityPool &priority_pool, bool const enable_tracing,
+    BlockCache &block_cache)
 {
     [[maybe_unused]] auto const block_start = std::chrono::system_clock::now();
     auto const block_begin = std::chrono::steady_clock::now();
@@ -183,7 +183,7 @@ Result<BlockExecOutput> propose_block(
 
     // Block input validation
     BOOST_OUTCOME_TRY(static_validate_consensus_header(consensus_header));
-    BOOST_OUTCOME_TRY(chain.static_validate_header(block.execution_inputs));
+    BOOST_OUTCOME_TRY(chain.static_validate_header(block.header_inputs));
     BOOST_OUTCOME_TRY(static_validate_block<traits>(block));
 
     // Sender and EIP-7702 authorities recovery
@@ -220,7 +220,7 @@ Result<BlockExecOutput> propose_block(
                      .emplace(
                          block_id,
                          BlockCacheEntry{
-                             .block_number = block.execution_inputs.number,
+                             .block_number = block.header_inputs.number,
                              .parent_id = consensus_header.parent_id(),
                              .senders_and_authorities =
                                  std::move(senders_and_authorities)})
@@ -252,13 +252,13 @@ Result<BlockExecOutput> propose_block(
         .senders = senders,
         .authorities = recovered_authorities};
 
-    if (block.execution_inputs.number > 1) {
+    if (block.header_inputs.number > 1) {
         bytes32_t const &parent_id = consensus_header.parent_id();
         MONAD_ASSERT(block_cache.contains(parent_id));
         BlockCacheEntry const &parent_entry = block_cache.at(parent_id);
         chain_context.parent_senders_and_authorities =
             &parent_entry.senders_and_authorities;
-        if (block.execution_inputs.number > 2) {
+        if (block.header_inputs.number > 2) {
             bytes32_t const &grandparent_id = parent_entry.parent_id;
             MONAD_ASSERT(block_cache.contains(grandparent_id));
             BlockCacheEntry const &grandparent_entry =
@@ -270,11 +270,8 @@ Result<BlockExecOutput> propose_block(
 
     // Core execution: transaction-level EVM execution that tracks state
     // changes but does not commit them
-    db.set_block_and_prefix(
-        block.execution_inputs.number - 1,
-        is_first_block ? bytes32_t{} : consensus_header.parent_id());
-    block.header.parent_hash =
-        to_bytes(keccak256(rlp::encode_block_header(db.read_eth_header())));
+    // Note: DB context and parent_hash are set up before InputBlockView
+    // construction
 
     BlockExecOutput exec_output;
     BlockMetrics block_metrics;
@@ -299,11 +296,11 @@ Result<BlockExecOutput> propose_block(
                 uint64_t const i,
                 State &state) {
                 return chain.revert_transaction(
-                    block.execution_inputs.number,
-                    block.execution_inputs.timestamp,
+                    block.header_inputs.number,
+                    block.header_inputs.timestamp,
                     sender,
                     tx,
-                    block.execution_inputs.base_fee_per_gas.value_or(0),
+                    block.header_inputs.base_fee_per_gas.value_or(0),
                     i,
                     state,
                     chain_context);
@@ -316,7 +313,7 @@ Result<BlockExecOutput> propose_block(
     auto const commit_begin = std::chrono::steady_clock::now();
     block_state.commit(
         block_id,
-        block.header,
+        block.header_inputs,
         results,
         call_frames,
         senders,
@@ -329,14 +326,14 @@ Result<BlockExecOutput> propose_block(
     if (commit_time > std::chrono::milliseconds(500)) {
         LOG_WARNING(
             "Slow block commit detected - block {}: {}",
-            block.header.number,
+            block.header_inputs.number,
             commit_time);
     }
 
     // Post-commit validation of header, with Merkle root fields filled in
     exec_output.eth_header = db.read_eth_header();
     BOOST_OUTCOME_TRY(
-        validate_output_header(block.execution_inputs, exec_output.eth_header));
+        validate_output_header(block.header_inputs, exec_output.eth_header));
 
     // Commit prologue: computation of the Ethereum block hash to append to
     // the circular hash buffer
@@ -344,7 +341,7 @@ Result<BlockExecOutput> propose_block(
         to_bytes(keccak256(rlp::encode_block_header(exec_output.eth_header)));
     block_hash_chain.propose(
         exec_output.eth_block_hash,
-        block.execution_inputs.number,
+        block.header_inputs.number,
         block_id,
         consensus_header.parent_id());
 
@@ -357,7 +354,7 @@ Result<BlockExecOutput> propose_block(
         ",tx={:5},rt={:4},rtp={:5.2f}%"
         ",sr={:>7},txe={:>8},cmt={:>8},tot={:>8},tpse={:5},tps={:5}"
         ",gas={:9},gpse={:4},gps={:3}{}{}{}",
-        block.execution_inputs.number,
+        block.header_inputs.number,
         block_id,
         std::chrono::duration_cast<std::chrono::milliseconds>(
             block_start.time_since_epoch())
@@ -630,7 +627,7 @@ Result<std::pair<uint64_t, uint64_t>> runloop_monad(
                 auto const &header) -> Result<std::pair<uint64_t, uint64_t>> {
             auto const block_time_start = std::chrono::steady_clock::now();
 
-            uint64_t const block_number = header.execution_inputs.number;
+            uint64_t const block_number = header.header_inputs.number;
             auto body = read_body(header.block_body_id, body_dir);
             auto const ntxns = body.transactions.size();
 
@@ -647,7 +644,7 @@ Result<std::pair<uint64_t, uint64_t>> runloop_monad(
             record_block_start(
                 block_id,
                 chain_id,
-                header.execution_inputs,
+                header.header_inputs,
                 block_hash_buffer.get(header.seqno - 1),
                 header.block_round,
                 header.epoch,
@@ -660,23 +657,39 @@ Result<std::pair<uint64_t, uint64_t>> runloop_monad(
                 block_hash_buffer, header.delayed_execution_results));
 
             auto propose_dispatch = [&]() -> Result<BlockExecOutput> {
+                // Set up DB context to read parent block
+                db.set_block_and_prefix(
+                    block_number - 1,
+                    block_number == start_block_num ? bytes32_t{}
+                                                    : header.parent_id());
+
+                // Compute parent hash from the parent block's header
+                bytes32_t const parent_hash = to_bytes(
+                    keccak256(rlp::encode_block_header(db.read_eth_header())));
+
+                // Complete the execution inputs with parent_hash
+                BlockHeaderInputs exec_inputs = header.header_inputs;
+                exec_inputs.parent_hash = parent_hash;
+
+                // Construct InputBlockView with complete execution inputs
+                InputBlockView const block{
+                    .header_inputs = exec_inputs,
+                    .transactions = body.transactions,
+                    .ommers = body.ommers,
+                    .withdrawals = body.withdrawals};
+
                 auto const rev =
-                    chain.get_monad_revision(header.execution_inputs.timestamp);
+                    chain.get_monad_revision(header.header_inputs.timestamp);
                 SWITCH_MONAD_TRAITS(
                     propose_block,
                     block_id,
                     header,
-                    InputBlockView{
-                        .execution_inputs = header.execution_inputs,
-                        .transactions = body.transactions,
-                        .ommers = body.ommers,
-                        .withdrawals = body.withdrawals},
+                    block,
                     block_hash_chain,
                     chain,
                     db,
                     vm,
                     priority_pool,
-                    block_number == start_block_num,
                     enable_tracing,
                     block_cache);
                 MONAD_ABORT_PRINTF("handled rev value %d", rev);

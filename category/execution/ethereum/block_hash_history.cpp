@@ -77,7 +77,7 @@ void deploy_block_hash_history_contract(State &state)
 EXPLICIT_TRAITS(deploy_block_hash_history_contract);
 
 template <Traits traits>
-void set_block_hash_history(State &state, ExecutionInputs const &inputs)
+void set_block_hash_history(State &state, BlockHeaderInputs const &inputs)
 {
     if constexpr (traits::evm_rev() < EVMC_PRAGUE) {
         return;

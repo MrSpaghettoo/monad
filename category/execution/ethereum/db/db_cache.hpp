@@ -154,7 +154,7 @@ public:
 
     virtual void commit(
         StateDeltas const &, Code const &, bytes32_t const &,
-        ExecutionInputs const &, std::vector<Receipt> const &,
+        BlockHeaderInputs const &, std::vector<Receipt> const &,
         std::vector<std::vector<CallFrame>> const &,
         std::vector<Address> const &, std::vector<Transaction> const &,
         std::vector<BlockHeader> const &,
@@ -166,7 +166,7 @@ public:
 
     virtual void commit(
         std::unique_ptr<StateDeltas> state_deltas, Code const &code,
-        bytes32_t const &block_id, ExecutionInputs const &execution_inputs,
+        bytes32_t const &block_id, BlockHeaderInputs const &header_inputs,
         std::vector<Receipt> const &receipts = {},
         std::vector<std::vector<CallFrame>> const &call_frames = {},
         std::vector<Address> const &senders = {},
@@ -179,7 +179,7 @@ public:
             *state_deltas,
             code,
             block_id,
-            execution_inputs,
+            header_inputs,
             receipts,
             call_frames,
             senders,
@@ -189,7 +189,7 @@ public:
             header_patch_fn);
 
         proposals_.commit(
-            std::move(state_deltas), execution_inputs.number, block_id);
+            std::move(state_deltas), header_inputs.number, block_id);
     }
 
     virtual BlockHeader read_eth_header() override

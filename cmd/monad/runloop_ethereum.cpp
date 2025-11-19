@@ -153,7 +153,7 @@ Result<void> process_ethereum_block(
     auto const commit_begin = std::chrono::steady_clock::now();
     block_state.commit(
         bytes32_t{block.header.number},
-        static_cast<ExecutionInputs const &>(block.header),
+        static_cast<BlockHeaderInputs const &>(block.header),
         receipts,
         call_frames,
         senders,

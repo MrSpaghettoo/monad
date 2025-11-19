@@ -32,7 +32,7 @@ MONAD_NAMESPACE_BEGIN
 
 template <Traits traits>
 evmc_tx_context get_tx_context(
-    Transaction const &tx, Address const &sender, ExecutionInputs const &inputs,
+    Transaction const &tx, Address const &sender, BlockHeaderInputs const &inputs,
     uint256_t const &chain_id)
 {
     return {

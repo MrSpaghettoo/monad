@@ -30,7 +30,7 @@ MONAD_NAMESPACE_BEGIN
 
 void record_block_start(
     bytes32_t const &bft_block_id, uint256_t const &chain_id,
-    ExecutionInputs const &inputs, bytes32_t const &eth_parent_hash,
+    BlockHeaderInputs const &inputs, bytes32_t const &eth_parent_hash,
     uint64_t block_round, uint64_t epoch, uint128_t epoch_nano_timestamp,
     size_t txn_count,
     std::optional<monad_c_secp256k1_pubkey> const &opt_block_author,

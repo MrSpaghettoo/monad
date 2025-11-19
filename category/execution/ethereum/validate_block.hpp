@@ -64,7 +64,7 @@ Receipt::Bloom compute_bloom(std::vector<Receipt> const &);
 bytes32_t compute_ommers_hash(std::vector<BlockHeader> const &);
 
 template <Traits traits>
-Result<void> static_validate_header(ExecutionInputs const &);
+Result<void> static_validate_header(BlockHeaderInputs const &);
 
 template <Traits traits>
 Result<void> static_validate_block(InputBlockView);

@@ -134,7 +134,7 @@ public:
 
     virtual void commit(
         StateDeltas const &, Code const &, bytes32_t const &,
-        ExecutionInputs const &, std::vector<Receipt> const & = {},
+        BlockHeaderInputs const &, std::vector<Receipt> const & = {},
         std::vector<std::vector<CallFrame>> const & = {},
         std::vector<Address> const & = {},
         std::vector<Transaction> const & = {},

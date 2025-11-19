@@ -24,7 +24,7 @@
 
 MONAD_NAMESPACE_BEGIN
 
-struct ExecutionInputs;
+struct BlockHeaderInputs;
 class State;
 
 constexpr Address BLOCK_HISTORY_ADDRESS{
@@ -36,7 +36,7 @@ template <Traits traits>
 void deploy_block_hash_history_contract(State &);
 
 template <Traits traits>
-void set_block_hash_history(State &, ExecutionInputs const &);
+void set_block_hash_history(State &, BlockHeaderInputs const &);
 
 bytes32_t get_block_hash_history(State &, uint64_t block_number);
 

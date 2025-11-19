@@ -87,7 +87,7 @@ void transfer_balance_dao(State &state)
 }
 
 // EIP-4788
-void set_beacon_root(State &state, ExecutionInputs const &inputs)
+void set_beacon_root(State &state, BlockHeaderInputs const &inputs)
 {
     constexpr auto BEACON_ROOTS_ADDRESS{
         0x000F3df6D732807Ef1319fB7B8bB8522d0Beac02_address};
@@ -177,7 +177,7 @@ std::vector<std::vector<std::optional<Address>>> recover_authorities(
 
 template <Traits traits>
 void execute_block_header(
-    Chain const &chain, BlockState &block_state, ExecutionInputs const &inputs)
+    Chain const &chain, BlockState &block_state, BlockHeaderInputs const &inputs)
 {
     State state{block_state, Incarnation{inputs.number, 0}};
 
@@ -210,7 +210,7 @@ EXPLICIT_TRAITS(execute_block_header);
 
 template <Traits traits>
 Result<std::vector<Receipt>> execute_block_transactions(
-    Chain const &chain, ExecutionInputs const &execution_inputs,
+    Chain const &chain, BlockHeaderInputs const &header_inputs,
     std::span<Transaction const> const transactions,
     std::vector<Address> const &senders,
     std::vector<std::vector<std::optional<Address>>> const &authorities,
@@ -244,7 +244,7 @@ Result<std::vector<Receipt>> execute_block_transactions(
              &transaction = transactions[i],
              &sender = senders[i],
              &authorities = authorities[i],
-             &execution_inputs = execution_inputs,
+             &header_inputs = header_inputs,
              &block_hash_buffer = block_hash_buffer,
              &block_state,
              &block_metrics,
@@ -260,7 +260,7 @@ Result<std::vector<Receipt>> execute_block_transactions(
                         transaction,
                         sender,
                         authorities,
-                        execution_inputs,
+                        header_inputs,
                         block_hash_buffer,
                         block_state,
                         block_metrics,
@@ -343,13 +343,13 @@ Result<std::vector<Receipt>> execute_block(
     MONAD_ASSERT(senders.size() == call_tracers.size());
     MONAD_ASSERT(senders.size() == state_tracers.size());
 
-    execute_block_header<traits>(chain, block_state, block.execution_inputs);
+    execute_block_header<traits>(chain, block_state, block.header_inputs);
 
     BOOST_OUTCOME_TRY(
         auto const retvals,
         execute_block_transactions<traits>(
             chain,
-            block.execution_inputs,
+            block.header_inputs,
             block.transactions,
             senders,
             authorities,
@@ -363,7 +363,7 @@ Result<std::vector<Receipt>> execute_block(
 
     State state{
         block_state,
-        Incarnation{block.execution_inputs.number, Incarnation::LAST_TX}};
+        Incarnation{block.header_inputs.number, Incarnation::LAST_TX}};
 
     if constexpr (traits::evm_rev() >= EVMC_SHANGHAI) {
         process_withdrawal(state, block.withdrawals);

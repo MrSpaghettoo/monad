@@ -89,7 +89,7 @@ evmc_revision EthereumMainnet::get_revision(
 }
 
 Result<void>
-EthereumMainnet::static_validate_header(ExecutionInputs const &inputs) const
+EthereumMainnet::static_validate_header(BlockHeaderInputs const &inputs) const
 {
     // EIP-779
     if (MONAD_UNLIKELY(

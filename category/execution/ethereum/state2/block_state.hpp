@@ -59,7 +59,7 @@ public:
     void merge(State const &);
 
     void commit(
-        bytes32_t const &block_id, ExecutionInputs const &,
+        bytes32_t const &block_id, BlockHeaderInputs const &,
         std::vector<Receipt> const & = {},
         std::vector<std::vector<CallFrame>> const & = {},
         std::vector<Address> const & = {},

@@ -64,7 +64,7 @@ struct Db
 
     virtual void commit(
         StateDeltas const &, Code const &, bytes32_t const &block_id,
-        ExecutionInputs const &, std::vector<Receipt> const & = {},
+        BlockHeaderInputs const &, std::vector<Receipt> const & = {},
         std::vector<std::vector<CallFrame>> const & = {},
         std::vector<Address> const & = {},
         std::vector<Transaction> const & = {},
@@ -74,7 +74,7 @@ struct Db
 
     virtual void commit(
         std::unique_ptr<StateDeltas> state_deltas, Code const &code,
-        bytes32_t const &block_id, ExecutionInputs const &execution_inputs,
+        bytes32_t const &block_id, BlockHeaderInputs const &header_inputs,
         std::vector<Receipt> const &receipts = {},
         std::vector<std::vector<CallFrame>> const &call_frames = {},
         std::vector<Address> const &senders = {},
@@ -87,7 +87,7 @@ struct Db
             *state_deltas,
             code,
             block_id,
-            execution_inputs,
+            header_inputs,
             receipts,
             call_frames,
             senders,

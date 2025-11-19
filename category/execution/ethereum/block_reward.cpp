@@ -82,14 +82,14 @@ void apply_block_reward(State &state, InputBlockView const block)
 
     // reward block beneficiary, YP Eqn. 172
     if (MONAD_LIKELY(miner_reward)) {
-        state.add_to_balance(block.execution_inputs.beneficiary, miner_reward);
+        state.add_to_balance(block.header_inputs.beneficiary, miner_reward);
     }
 
     // reward ommers, YP Eqn. 175
     for (auto const &ommer : block.ommers) {
         auto const ommer_reward = calculate_ommer_reward(
             block_reward<traits>(),
-            block.execution_inputs.number,
+            block.header_inputs.number,
             ommer.number);
         if (MONAD_LIKELY(ommer_reward)) {
             state.add_to_balance(ommer.beneficiary, ommer_reward);

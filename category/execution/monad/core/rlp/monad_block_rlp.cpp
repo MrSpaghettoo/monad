@@ -27,9 +27,9 @@
 
 MONAD_RLP_ANONYMOUS_NAMESPACE_BEGIN
 
-Result<ExecutionInputs> decode_execution_inputs(byte_string_view &enc)
+Result<BlockHeaderInputs> decode_execution_inputs(byte_string_view &enc)
 {
-    ExecutionInputs inputs;
+    BlockHeaderInputs inputs;
 
     BOOST_OUTCOME_TRY(auto payload, parse_list_metadata(enc));
     BOOST_OUTCOME_TRY(inputs.ommers_hash, decode_bytes32(payload));
@@ -200,7 +200,7 @@ decode_consensus_block_header(byte_string_view &enc)
     BOOST_OUTCOME_TRY(
         header.delayed_execution_results, decode_execution_results(payload));
     BOOST_OUTCOME_TRY(
-        header.execution_inputs, decode_execution_inputs(payload));
+        header.header_inputs, decode_execution_inputs(payload));
     BOOST_OUTCOME_TRY(header.block_body_id, decode_bytes32(payload));
 
     if constexpr (std::same_as<

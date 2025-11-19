@@ -29,7 +29,7 @@
 
 MONAD_NAMESPACE_BEGIN
 
-struct ExecutionInputs
+struct BlockHeaderInputs
 {
     bytes32_t parent_hash{}; // H_p
     bytes32_t ommers_hash{NULL_LIST_HASH}; // H_o
@@ -50,10 +50,10 @@ struct ExecutionInputs
     std::optional<bytes32_t> requests_hash{std::nullopt}; // EIP-7685
 
     friend bool
-    operator==(ExecutionInputs const &, ExecutionInputs const &) = default;
+    operator==(BlockHeaderInputs const &, BlockHeaderInputs const &) = default;
 };
 
-struct BlockHeader : public ExecutionInputs
+struct BlockHeader : public BlockHeaderInputs
 {
     Receipt::Bloom logs_bloom{}; // H_b
     bytes32_t state_root{NULL_ROOT}; // H_r
@@ -64,7 +64,7 @@ struct BlockHeader : public ExecutionInputs
 
 struct InputBlockView
 {
-    ExecutionInputs const &execution_inputs;
+    BlockHeaderInputs const &header_inputs;
     std::vector<Transaction> const &transactions;
     std::vector<BlockHeader> const &ommers;
     std::optional<std::vector<Withdrawal>> const &withdrawals;
@@ -82,7 +82,7 @@ struct Block
     InputBlockView to_input_view() const noexcept
     {
         return InputBlockView{
-            .execution_inputs = static_cast<ExecutionInputs const &>(header),
+            .header_inputs = static_cast<BlockHeaderInputs const &>(header),
             .transactions = transactions,
             .ommers = ommers,
             .withdrawals = withdrawals};

@@ -36,7 +36,7 @@ class BlockHashBuffer;
 class BlockMetrics;
 class BlockState;
 class State;
-struct ExecutionInputs;
+struct BlockHeaderInputs;
 struct CallTracerBase;
 struct Chain;
 struct Transaction;
@@ -50,7 +50,7 @@ Result<Receipt> dispatch_transaction(
     Chain const &chain, uint64_t const i, Transaction const &transaction,
     Address const &sender,
     std::vector<std::optional<Address>> const &authorities,
-    ExecutionInputs const &execution_inputs,
+    BlockHeaderInputs const &header_inputs,
     BlockHashBuffer const &block_hash_buffer, BlockState &block_state,
     BlockMetrics &block_metrics, boost::fibers::promise<void> &prev,
     CallTracerBase &call_tracer, trace::StateTracer &state_tracer,

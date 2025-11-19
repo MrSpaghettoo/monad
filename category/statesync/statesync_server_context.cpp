@@ -290,7 +290,7 @@ void monad_statesync_server_context::update_voted_metadata(
 
 void monad_statesync_server_context::commit(
     StateDeltas const &state_deltas, Code const &code,
-    bytes32_t const &block_id, ExecutionInputs const &execution_inputs,
+    bytes32_t const &block_id, BlockHeaderInputs const &header_inputs,
     std::vector<Receipt> const &receipts,
     std::vector<std::vector<CallFrame>> const &call_frames,
     std::vector<Address> const &senders,
@@ -299,12 +299,12 @@ void monad_statesync_server_context::commit(
     std::optional<std::vector<Withdrawal>> const &withdrawals,
     OutputHeaderPatchFn header_patch_fn)
 {
-    on_commit(*this, state_deltas, execution_inputs.number, block_id);
+    on_commit(*this, state_deltas, header_inputs.number, block_id);
     rw.commit(
         state_deltas,
         code,
         block_id,
-        execution_inputs,
+        header_inputs,
         receipts,
         call_frames,
         senders,
