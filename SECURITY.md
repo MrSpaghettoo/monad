@@ -37,7 +37,7 @@ The following issues are considered outside the scope of our vulnerability discl
 -   Social engineering or phishing attacks    
 -   Physical security vulnerabilities
 -   Denial of service (DoS) attacks
--   Vulnerabilities in third-party dependencies (except where they create a protocol-level security issues
+-   Vulnerabilities in third-party dependencies (except where they create a protocol-level security issue)
 -   Issues requiring unauthorized physical access to systems or infrastructure
 -   Theoretical vulnerabilities without demonstrated exploitation paths
 -   Vulnerabilities related to smart contracts, dApps, or anything else not included in this codebase
