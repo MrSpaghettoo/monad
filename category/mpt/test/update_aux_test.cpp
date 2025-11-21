@@ -18,6 +18,8 @@
 #include <chrono>
 #include <thread>
 
+#include "test_fixtures_gtest.hpp"
+
 #include <category/async/config.hpp>
 #include <category/async/detail/scope_polyfill.hpp>
 #include <category/async/io.hpp>
@@ -196,4 +198,53 @@ TEST(update_aux_test, root_offsets_fast_slow)
             ::testing::KilledBySignal(SIGABRT),
             "Detected corruption");
     }
+}
+
+TEST(update_aux_test, configurable_root_offset_chunks)
+{
+    std::filesystem::path filename = monad::test::create_temp_file(8);
+
+    monad::io::Ring ring1;
+    monad::io::Ring ring2;
+    monad::io::Buffers testbuf =
+        monad::io::make_buffers_for_segregated_read_write(
+            ring1,
+            ring2,
+            2,
+            4,
+            monad::async::AsyncIO::MONAD_IO_BUFFERS_READ_SIZE,
+            monad::async::AsyncIO::MONAD_IO_BUFFERS_WRITE_SIZE);
+    monad::async::storage_pool::creation_flags flags;
+    flags.num_cnv_chunks = 5;
+    {
+        // Create storage pool with 5 conventional chunks
+        monad::async::storage_pool pool(
+            std::span{&filename, 1},
+            monad::async::storage_pool::mode::truncate,
+            flags);
+        EXPECT_EQ(pool.chunks(monad::async::storage_pool::cnv), 5);
+
+        monad::async::AsyncIO testio(pool, testbuf);
+        monad::mpt::UpdateAux<> aux(testio);
+
+        // Verify that exactly 4 chunks were allocated to hold two copies of
+        // root offsets, since chunk 0 is used for metadata
+        EXPECT_TRUE(aux.db_metadata()->using_chunks_for_root_offsets);
+        EXPECT_EQ(aux.db_metadata()->root_offsets.storage_.cnv_chunks_len, 4);
+        EXPECT_EQ(aux.root_offsets().capacity(), 2ULL << 25);
+    }
+    {
+        // reopen storage_pool
+        monad::async::storage_pool pool(
+            std::span{&filename, 1},
+            monad::async::storage_pool::mode::open_existing,
+            flags);
+        EXPECT_EQ(pool.chunks(monad::async::storage_pool::cnv), 5);
+        monad::async::AsyncIO testio(pool, testbuf);
+        monad::mpt::UpdateAux<> aux(testio);
+        EXPECT_TRUE(aux.db_metadata()->using_chunks_for_root_offsets);
+        EXPECT_EQ(aux.db_metadata()->root_offsets.storage_.cnv_chunks_len, 4);
+        EXPECT_EQ(aux.root_offsets().capacity(), 2ULL << 25);
+    }
+    remove(filename);
 }

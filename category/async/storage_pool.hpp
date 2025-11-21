@@ -95,7 +95,8 @@ public:
         {
             // Preceding this is an array of uint32_t of chunk bytes used
 
-            uint32_t spare_[13]; // set aside for flags later
+            uint32_t spare_[12]; // set aside for flags later
+            uint32_t num_cnv_chunks; // number of cnv chunks per device
             uint32_t config_hash; // hash of this configuration
             uint32_t chunk_capacity;
             uint8_t magic[4]; // "MND0" for v1 of this metadata
@@ -321,12 +322,16 @@ public:
         //! happily use any partition you feed it, including the system drive.
         uint32_t disable_mismatching_storage_pool_check : 1;
 
+        //! Number of conventional chunks to allocate per device. Default is 3.
+        uint32_t num_cnv_chunks;
+
         constexpr creation_flags()
             : chunk_capacity(28)
             , interleave_chunks_evenly(false)
             , open_read_only(false)
             , open_read_only_allow_dirty(false)
             , disable_mismatching_storage_pool_check(false)
+            , num_cnv_chunks(3)
         {
         }
     };
