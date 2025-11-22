@@ -18,6 +18,7 @@
 # build system, i.e., this can be used a top-level source directory to just
 # build these components. This is useful for external third-party clients, and
 # for the Rust build system.
+cmake_minimum_required(VERSION 3.27)
 
 project(monad_event)
 
