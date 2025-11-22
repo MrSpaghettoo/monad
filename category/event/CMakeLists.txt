@@ -168,7 +168,7 @@ endif()
 if(BUILD_SHARED_LIBS)
   target_link_libraries(monad_event PRIVATE zstd::libzstd_shared)
 else()
-  target_link_libraries(monad_event PRIVATE zstd::libzstd_static)
+  target_link_libraries(monad_event PRIVATE zstd::libzstd)
 endif()
 
 if(libgmp_file)
