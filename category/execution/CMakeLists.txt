@@ -269,7 +269,12 @@ target_include_directories(
   monad_execution_native
   PUBLIC ${CATEGORY_MAIN_DIR}
   PUBLIC ${CMAKE_CURRENT_BINARY_DIR}/test
-  PRIVATE ${Boost_INCLUDE_DIRS})
+  PRIVATE ${Boost_INCLUDE_DIRS}
+  PUBLIC /usr/include/magic_enum)
+
+
+
+
 
 target_compile_definitions(
   monad_execution_ethereum PUBLIC MONAD_CXX_CTYPES_USE_EVMC_HPP
