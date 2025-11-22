@@ -77,7 +77,7 @@ target_compile_options(eventcap PRIVATE -Wno-c99-designator)
 target_compile_options(eventcap PRIVATE -Wno-missing-field-initializers)
 
 target_link_libraries(eventcap PRIVATE
-    monad_event CLI11::CLI11 zstd::libzstd_static OpenSSL::Crypto)
+    monad_event CLI11::CLI11 zstd::libzstd OpenSSL::Crypto)
 
 target_link_libraries(eventcap PRIVATE -lstdc++exp)
 
